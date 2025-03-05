@@ -1,0 +1,252 @@
+Index1,id,http://www.okkam.org/ontology_restaurant1.owl#name,http://www.okkam.org/ontology_restaurant1.owl#phone_number,http://www.okkam.org/ontology_restaurant1.owl#street,Index2,id,http://www.okkam.org/ontology_restaurant2.owl#name,http://www.okkam.org/ontology_restaurant2.owl#phone_number,http://www.okkam.org/ontology_restaurant2.owl#street
+0,0,new york,,,1036,1457,new york noodletown,212/349-0923,
+1,1,la grotta,404/231-1368,,780,1084,la grotta,404-231-1368,
+2,2,fenix,213/848-6677,,543,737,fenix at the argyle,213-848-6677,
+3,3,,,570 4th st.,897,1244,,,4th st.
+4,4,,,43 w. 65th st.,831,1155,,,58 w. 65th st.
+4,4,,,43 w. 65th st.,686,940,,,48 w. 65th st.
+5,6,rainbow room,212/632-5000,,991,1391,rainbow room,212-632-5000,
+6,7,,,2 harrison st.  near hudson st.,342,448,,,2 harrison st.
+7,8,aureole,212/ 319-1660,,1193,1698,aureole,212-319-1660,
+8,9,atlanta,,,512,689,,,405 atlantic ave.
+9,10,cafe claude,415/392-3505,,1108,1561,cafe claude,415-392-3505,
+10,11,los angeles,,,1239,1764,spago (los angeles),310-652-4025,
+11,12,,,2880 las vegas blvd. s,586,800,,,2880 las vegas blvd. s
+12,14,chin's,702/733-8899,,1310,1872,chin's,702-733-8899,
+13,15,,,160 central park s,692,950,,,160 central park s
+14,17,island spice,212/765-1737,,1514,2177,island spice,212-765-1737,
+15,18,,,8284 melrose ave.,885,1228,,,8284 melrose ave.
+16,19,san francisco,,,1222,1738,old san francisco,,
+17,21,,,1397 n. highland ave.,783,1088,,,1397 n. highland ave.
+18,23,ciboulette,404/874-7600,,78,85,ciboulette restaurant,404-874-7600,
+19,24,,,6703 melrose ave.,1540,2217,,,6703 melrose ave.
+20,25,,,95 ave. a at 6th st.,105,120,,,458 6th ave. at 11th st.
+21,27,rose pistola,415/399-0499,,292,374,rose pistola,415-399-0499,
+22,29,montrachet,212/ 219-2777,,307,392,montrachet,212-219-2777,
+23,30,,,13 w. 54th st.,1195,1701,,,13 w. 54th st.
+24,32,rex il ristorante,213/627-2300,,978,1370,rex il ristorante,213-627-2300,
+25,33,delectables,404/681-2909,,824,1147,delectables,404-681-2909,
+26,34,hotel bel-air,310/472-1211,,584,797,bel-air hotel,310-472-1211,
+27,35,,,1 mission st.,1110,1563,,,1 mission st.
+28,37,oceana,212/759-5941,,1033,1453,oceana,212-759-5941,
+29,38,,,152 w. 44th st.,1313,1876,,,152 w. 44th st.
+30,39,,,1737 post st.,1151,1632,,,1737 post st.
+31,40,spago,310/652-4025,,1239,1764,spago (los angeles),310-652-4025,
+32,41,,,42 e. 20th st.  between park ave. s and broadway,197,251,,,111 e. 22nd st.  between park ave. s and lexington ave.
+33,42,las vegas,,,758,1048,only in las vegas,,
+34,43,toulouse,404/351-9533,,1144,1622,toulouse,404-351-9533,
+35,44,studio city,,,416,560,fog city diner,415/982-2000,
+36,46,smith & wollensky,212/753-1530,,1345,1933,smith & wollensky,212-753-1530,
+37,47,,,3073 piedmont road,80,88,,,3073 piedmont rd.
+38,49,dawat,212/355-7555,,1548,2233,dawat,212-355-7555,
+39,50,,,57 jane st.  off hudson st.,308,394,,,57 jane st.
+40,51,lulu,415/495-5775,,917,1273,bistro roti,415/495-6500,
+41,53,,,12969 ventura blvd.,523,705,,,12969 ventura blvd.
+42,56,abruzzi,404/261-8186,,126,151,abruzzi,404-261-8186,
+43,57,,,12224 ventura blvd.,26,27,,,12224 ventura blvd.
+44,59,lutece,212/752-2225,,347,454,lutece,212-752-2225,
+45,61,matsuhisa,310/659-9639,,1019,1432,matsuhisa,310-659-9639,
+46,62,,,181 peachtree st.,204,259,,,181 peachtree st.
+47,64,mary mac's tea room,404/876-1800,,461,619,mary mac's tea room,404-876-1800,
+48,65,granita,310/456-0488,,211,270,granita,310-456-0488,
+49,66,,,22 hawthorne st.,1190,1694,,,22 hawthorne st.
+50,67,,,1110 3rd ave. at 65th st.,1282,1829,,,633 3rd ave. at 40th st.
+51,69,river cafe,718/522-5200,,676,925,river cafe,718-522-5200,
+52,70,,,20 e. 76th st.,1550,2237,,,20 e. 76th st.
+53,71,cafe lalo,212/496-6031,,891,1235,cafe lalo,212-496-6031,
+54,73,campton place,415/955-5555,,788,1095,campton place,415-955-5555,
+55,74,hollywood,,,1314,1879,pinot hollywood,213/461-8800,
+56,75,,,2245 e. flamingo rd.,130,155,,,2245 e. flamingo rd.
+57,77,coyote cafe,702/891-7349,,1000,1403,coyote cafe (las vegas),702-891-7349,
+58,78,,,2 e. 55th st.,350,457,,,2 e. 55th st.
+59,80,fleur de lys,415/673-7779,,1192,1696,fleur de lys,415-673-7779,
+60,81,jo jo,212/223-5656,,1201,1710,jo jo,212-223-5656,
+61,82,,,3rd st.,459,616,,,3rd st.
+62,84,,,2637 peachtree rd.  peachtree house condominium,1466,2103,,,2285 peachtree rd.  peachtree battle condominium
+63,85,,,8358 sunset blvd. west,1232,1752,,,8358 sunset blvd.
+64,86,,,30 rockefeller plaza,679,929,,,30 rockefeller plaza
+65,87,adriano's ristorante,310/475-9807,,1511,2173,adriano's ristorante,310/475-9807,
+66,89,,,34 e. 61st st.,893,1239,,,34 e. 61st st.
+67,91,georgia grille,404/352-3517,,508,685,georgia grille,404-352-3517,
+68,92,cafe bizou,818/788-3536,,260,331,cafe bizou,818-788-3536,
+69,93,,,7 claude la.,790,1097,,,7 claude ln.
+70,95,park avenue cafe,212/644-1900,,716,990,park avenue cafe (new york city),212-644-1900,
+71,96,,,3201 fillmore st.,1538,2213,,,1915 fillmore st.
+71,96,,,3201 fillmore st.,740,1023,,,3347 fillmore st.
+71,96,,,3201 fillmore st.,551,747,,,1870 fillmore st.
+71,96,,,3201 fillmore st.,976,1365,,,2125 fillmore st.
+71,96,,,3201 fillmore st.,839,1165,,,3127 fillmore st.
+72,97,,,3200 las vegas blvd. s,1002,1406,,,3200 las vegas blvd. s.
+73,98,valentino,310/829-4313,,934,1301,valentino,310-829-4313,
+74,99,,,402 w. 44th st.,1203,1712,,,402 w. 44th st.
+75,101,veni vidi vici,404/875-8424,,830,1154,veni vidi vici,404-875-8424,
+77,104,tavern on the green,212/873-3200,,1039,1462,tavern on the green,212-873-3200,
+78,105,,,1529 piedmont ave.,1319,1887,,,1529 piedmont ave.
+79,107,felidia,212/758-1479,,1244,1772,felidia,212-758-1479,
+80,108,,,239 w. broadway  between walker and white sts.,150,183,,,219 w. broadway  between franklin and white sts.
+81,109,masa's,415/989-7154,,841,1167,masa's,415-989-7154,
+82,111,,,617 s. olive st.,190,242,,,617 s. olive st.
+83,112,,,1 margaret mitchell sq.,513,690,,,1 margaret mitchell sq.
+84,115,bacchanalia,404/365-0410,,1352,1944,bacchanalia,404-365-0410,
+85,116,,,701 stone canyon rd.,1279,1824,,,701 stone canyon rd.
+86,117,,,55 e. 54th st.,722,997,,,55 e. 54th st.
+87,119,manhattan ocean club,212/ 371-7777,,1555,2244,manhattan ocean club,212-371-7777,
+88,120,,,1114 horn ave.,356,464,,,1121 s. western ave.
+89,122,the palm,310/550-8811,,704,970,palm  the (los angeles),310-550-8811,
+90,123,,,b peachtree rd.,834,1158,,,293-b peachtree rd.
+91,125,nikolai's roof,404/221-6362,,134,162,nikolai's roof,404-221-6362,
+92,126,,,201 e. 49th st.,1463,2100,,,205 e. 49th st.
+93,127,grill on the alley,310/276-0615,,1436,2062,grill  the,310-276-0615,
+94,128,,,5937 geary blvd.,886,1229,,,5937 geary blvd.
+95,130,san domenico,212/265-5959,,357,466,san domenico,212-265-5959,
+96,131,,,210 e. 58th st.,1245,1774,,,210 e. 58th st.
+97,132,cafe des artistes,212/877-3500,,568,773,cafe des artistes,212-877-3500,
+98,134,chez michel,415/775-7036,,469,630,chez michel,415-775-7036,
+99,135,malibu,,,929,1291,,,23725 w. malibu rd.
+100,136,,,2355 peachtree rd.  peachtree battle shopping center,1466,2103,,,2285 peachtree rd.  peachtree battle condominium
+101,138,le montrachet,702/732-5111,,685,938,le montrachet bistro,702-732-5651,
+102,139,,,249 e. 50th st.,1557,2246,,,249 e. 50th st.
+103,141,fringale,415/543-0573,,889,1233,fringale,415-543-0573,
+104,143,la caravelle,212/586-4252,,902,1249,la caravelle,212-586-4252,
+105,144,,,129 n. la cienega blvd.,233,298,,,129 n. la cienega blvd.
+106,147,palace court,702/731-7547,,1394,2003,palace court,702-731-7110,
+107,148,,,224 ponce de leon ave.,136,164,,,224 ponce de leon ave.
+108,150,la cote basque,212/688-6525,,47,51,la cote basque,212-688-6525,
+109,151,,,23725 w. malibu rd.,929,1291,,,23725 w. malibu rd.
+110,152,,,1 water st. at the east river,359,469,,,1 water st.
+111,154,restaurant katsu,213/665-1891,,779,1082,restaurant horikawa,213/680-9355,
+112,155,,,201 w. 83rd st.,571,778,,,201 w. 83rd st.
+113,157,hedgerose heights inn,404/233-7673,,175,222,hedgerose heights inn  the,404-233-7673,
+114,158,campanile,213/938-1447,,1483,2130,campanile,213-938-1447,
+115,159,,,340 stockton st.,471,632,,,340 stockton st.
+116,161,petrossian,212/245-2214,,393,527,petrossian,212-245-2214,
+117,162,,,545 post st.,524,706,,,545 post st.
+118,163,,,3799 las vegas blvd. s,687,941,,,3799 las vegas blvd. s.
+119,164,yujean kang's gourmet chinese cuisine,818/585-0855,,610,834,yujean kang's,818-585-0855,
+120,165,,,160 e. 64th st.,903,1251,,,160 e. 64th st.
+121,167,alain rondelli,415/387-0408,,515,694,alain rondelli,415-387-0408,
+122,168,sherman oaks,,,117,139,russian/german,,
+123,169,,,600 stockton st.,1242,1769,,,600 stockton st.
+124,171,uncle nick's,212/315-1726,,725,1001,uncle nick's,212-245-7992,
+125,172,beverly hills,,,279,357,,,224 s. beverly dr.
+125,172,beverly hills,,,1264,1800,,,414 n. beverly dr.
+125,172,beverly hills,,,227,290,,,2575 beverly blvd.
+125,172,beverly hills,,,132,159,,,8020 beverly blvd.
+125,172,beverly hills,,,1307,1868,,,8783 beverly blvd.
+125,172,beverly hills,,,311,397,,,301 n. beverly dr.
+125,172,beverly hills,,,1339,1922,,,8424 beverly blvd.
+125,172,beverly hills,,,1005,1410,,,252 n. beverly dr.
+125,172,beverly hills,,,346,452,,,207 s. beverly dr.
+125,172,beverly hills,,,951,1327,,,8600 beverly blvd.
+126,173,four seasons grill room,212/754-9494,,940,1310,four seasons,212-754-9494,
+127,174,mifune japan center  kintetsu building,415/922-0337,,525,707,mifune,415-922-0337,
+128,176,,,2290 peachtree rd.  peachtree square shopping center,1466,2103,,,2285 peachtree rd.  peachtree battle condominium
+129,178,brooklyn,,,1519,2186,brookhaven cafe,404-231-5907,
+130,179,bone's,404/237-2663,,195,248,pricci,404/237-2941,
+131,180,,,14016 ventura blvd.,972,1358,,,14016 ventura blvd.
+132,181,,,100 e. 63rd st.,398,533,,,100 e. 63rd st.
+133,183,march,212/754-6272,,1250,1781,march,212-754-6272,
+134,184,,,3115 pico blvd.,612,837,,,3115 pico blvd.
+135,187,patina,213/467-1108,,383,507,patina,213-467-1108,
+136,188,,,41 14th st.,519,698,,,41 14th st.
+137,190,pano's and paul's,404/261-3662,,1359,1954,pano's & paul's,404-261-3662,
+138,191,,,2316 polk st.,563,766,,,2316 polk st.
+139,192,,,in central park at 67th st.,692,950,,,160 central park s
+140,194,second avenue deli,212/677-0606,,0,0,second avenue deli,212-677-0606,
+141,195,,,243 e. 58th st.,941,1313,,,243 e. 58th st.
+142,196,carmine's,212/362-2200,,240,307,carmine's,212-362-2200,
+143,198,,,3125 piedmont rd.  near peachtree rd.,390,522,,,3109 piedmont rd.  just south of peachtree rd.
+144,199,,,57 w. 58th st.,1252,1784,,,57 w. 58th st.
+145,200,hawthorne lane,415/777-9779,,566,770,hawthorne lane,415-777-9779,
+146,202,,,9001 santa monica blvd.,1458,2094,,,9001 santa monica blvd.
+147,205,second street grille,702/385-3232,,1094,1541,second street grill,702-385-6277,
+148,206,,,255 courtland st.  at harris st.,1362,1957,,,255 courtland st.
+149,207,santa monica,,,1032,1452,,,502 santa monica blvd
+150,208,le bernardin,212/489-1515,,1293,1850,le bernardin,212-489-1515,
+151,209,,,9560 dayton way,604,824,,,9560 dayton way
+152,210,,,240 central park s,3,3,,,240 central park s.
+153,212,l'orangerie,310/652-9770,,428,573,l'orangerie,310-652-9770,
+154,213,,,1 w. 67th st.,243,312,,,1 w. 67th st.
+155,215,heera of india,404/876-4408,,1399,2009,heera of india,404-876-4408,
+156,216,chinois on main,310/392-9025,,1168,1662,chinois on main,310-392-9025,
+157,217,,,804 northpoint,143,174,,,804 north point st.
+158,219,picholine,212/724-8585,,55,60,picholine,212-724-8585,
+159,220,,,3000 w. paradise rd.,366,479,,,3000 paradise rd.
+160,221,21 club,212/582-7200,,289,369,21 club,212-582-7200,
+161,222,,,33 w. 55th st.,578,788,,,33 w. 55th st.
+162,224,aqua,415/956-9662,,183,232,aqua,415-956-9662,
+163,226,,,532 columbus ave.,939,1309,,,532 columbus ave.
+164,227,,,3570 las vegas blvd. s,262,333,,,3570 las vegas blvd. s
+165,229,union square cafe,212/243-4020,,402,539,union square cafe,212-243-4020,
+166,230,,,60 w. 55th st.  between 5th and 6th ave.,848,1176,,,25 w. 40th st.  between 5th and 6th aves.
+167,232,gotham bar & grill,212/620-4020,,618,844,gotham bar & grill,212-620-4020,
+168,233,,,1972 n. hillhurst ave.,1503,2160,,,1972 hillhurst ave.
+169,234,plumpjack cafe,415/563-4755,,191,243,plumpjack cafe,415-563-4755,
+170,236,,,490 e. paces ferry rd.,1405,2016,,,490 e. paces ferry rd. ne
+171,238,brasserie le coze,404/266-1440,,734,1013,brasserie le coze,404-266-1440,
+172,239,,,624 s. la brea ave.,653,889,,,624 s. la brea ave.
+173,240,,,182 w. 58th st.,60,65,,,182 w. 58th st.
+174,242,mesa grill,212/807-7400,,947,1321,mesa grill,212-807-7400,
+175,243,,,67 n. raymond ave.,291,373,,,67 n. raymond ave.
+176,246,philippe's the original,213/628-3781,,37,39,philippe the original,213-628-3781,
+177,247,arnie morton's of chicago,310/246-1501,,1213,1725,arnie morton's of chicago,310-246-1501,
+178,248,,,126 clement st.,186,235,,,126 clement st.
+179,250,cafe  ritz-carlton  buckhead,404/237-2700,,1056,1486,ritz-carlton cafe (buckhead),404-237-2700,
+180,251,,,816 folsom st.,234,299,,,816 folsom st.
+181,252,,,747 9th ave.  between 50th and 51st sts.,173,217,,,301 park ave.  between 49th and 50th sts.
+182,254,seryna,212/980-9393,,1260,1795,seryna,212-980-9393,
+183,255,,,99 e. 52nd st.,619,845,,,99 e. 52nd st.
+184,257,carnegie deli,212/757-2245,,1467,2104,carnegie deli,212-757-2245,
+185,258,dining room  ritz-carlton  buckhead,404/237-2700,,228,292,ritz-carlton dining room (buckhead),404-237-2700,
+186,260,shun lee west,212/371-8844,,447,601,shun lee palace,212-371-8844,
+187,261,,,3130 piedmont road,737,1017,,,3130 piedmont rd. ne
+188,263,chanterelle,212/966-6960,,662,904,chanterelle,212-966-6960,
+189,264,,,405 e. 58th st.,948,1323,,,405 e. 58th st.
+190,265,khan toke thai house,415/668-6654,,237,303,khan toke thai house,415-668-6654,
+191,267,,,5955 melrose ave.,1150,1631,,,5955 melrose ave.
+192,270,steak house,702/734-0410,,772,1074,steak house  the,702-734-0410,
+193,271,,,1232 w. paces ferry rd.,1058,1488,,,1232 w. paces ferry rd.
+194,273,les celebrites,212/484-5113,,983,1381,les celebrites,212-484-5113,
+195,274,,,156 2nd ave. at 10th st.,373,493,,,860 2nd ave. at 46th st.
+196,275,le chardonnay,213/655-8880,,97,110,le chardonnay (los angeles),213-655-8880,
+197,277,,,2450 broadway  between 90th and 91st sts.,754,1042,,,2150 broadway  between 75th and 76th sts.
+198,279,indigo coastal grill,404/876-0676,,1100,1549,indigo coastal grill,404-876-0676,
+199,280,citrus,213/857-0034,,862,1196,citrus,213-857-0034,
+200,281,,,777 sutter st.,287,367,,,777 sutter st.
+201,283,pisces,212/260-6660,,1300,1858,pisces,212-260-6660,
+202,284,aquavit,212/307-7311,,1507,2166,aquavit,212-307-7311,
+203,286,boulevard,415/543-6084,,1408,2021,boulevard,415-543-6084,
+204,288,,,200 e. fremont st.,777,1079,,,200 e. fremont st.
+205,289,,,2930 beverly glen circle,616,842,,,2930 beverly glen circle
+206,291,virgil's,212/ 921-9494,,67,73,virgil's real bbq,212-921-9494,
+207,292,,,155 w. 51st st.,986,1385,,,155 w. 51st st.
+208,294,gramercy tavern,212/477-0777,,297,380,gramercy tavern,212-477-0777,
+209,295,,,903 n. la cienega blvd.,1188,1691,,,903 n. la cienega blvd.
+210,297,postrio,415/776-7825,,1417,2033,postrio,415-776-7825,
+211,299,,,595 piedmont ave.  rio shopping mall,1104,1554,,,595 piedmont ave.
+212,301,buckhead diner,404/262-3336,,409,549,buckhead diner,404-262-3336,
+213,302,,,2709 main st.,331,427,,,2709 main st.
+214,303,,,35 w. 64th st.,1304,1863,,,35 w. 64th st.
+215,305,ritz-carlton restaurant and dining room,415/296-7465,,614,840,ritz-carlton dining room (san francisco),415-296-7465,
+216,306,mi cocina,212/627-8273,,626,854,mi cocina,212-627-8273,
+217,307,,,21 w. 52nd st.,1508,2169,,,21 w. 52nd st.
+218,309,pinot bistro,818/990-0500,,1287,1837,pinot bistro,818-990-0500,
+219,310,art's delicatessen,818/762-1221,,864,1198,art's deli,818-762-1221,
+220,311,,,252 california st.,1411,2024,,,252 california st.
+221,312,,,648 bush st.,1459,2095,,,648 bush st.
+222,313,,,21 e. 16th st.,72,78,,,21 e. 16th st.
+223,314,,,12 e. 12th st.,298,382,,,12 e. 12th st.
+224,316,restaurant  ritz-carlton  atlanta,404/659-0400,,1453,2086,ritz-carlton restaurant,404-659-0400,
+225,319,sign of the dove,212/861-8080,,118,140,sign of the dove,212-861-8080,
+226,320,,,3393 peachtree rd.  lenox square mall  near neiman marcus,411,552,,,3393 peachtree rd.
+227,322,daniel,212/288-0033,,339,443,daniel,212-288-0033,
+228,323,,,102 5th ave.  between 15th and 16th sts.,485,651,,,87 1st ave.  between 5th and 6th sts.
+229,324,la folie,415/776-5577,,1462,2099,la folie,415-776-5577,
+230,326,,,1001 n. alameda st.,838,1164,,,1001 n. alameda st.
+231,329,tillerman,702/731-4036,,453,609,tillerman  the,702-731-4036,
+232,330,,,435 s. la cienega blv.,375,495,,,435 s. la cienega blvd.
+233,331,,,3434 peachtree rd.,743,1027,,,3434 peachtree rd. ne
+234,333,lespinasse,212/339-6719,,667,914,lespinasse (new york city),212-339-6719,
+235,334,,,11 e. 53rd st.,958,1336,,,11 e. 53rd st.
+236,336,locanda veneta,310/274-1893,,1329,1905,locanda veneta,310-274-1893,
+237,337,,,854 7th ave.  between 54th and 55th sts.,607,830,,,834 7th ave.  between 53rd and 54th sts.
