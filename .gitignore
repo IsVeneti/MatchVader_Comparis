@@ -1,5 +1,7 @@
 llama-cpp-python/
 models/
+prompt*
+output*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
