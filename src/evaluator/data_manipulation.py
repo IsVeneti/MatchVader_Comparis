@@ -32,11 +32,11 @@ def merge_dataframes(pairs_csv, ground_truth_csv, output_csv, join_type="inner")
     """
     # Load DataFrames
     pairs_df = pd.read_csv(pairs_csv)
-    print("Pairs DataFrame:\n", pairs_df)
+    # print("Pairs DataFrame:\n", pairs_df)
 
     ground_truth_df = pd.read_csv(ground_truth_csv)
     ground_truth_df.columns = pairs_df.columns  # Ensure matching column names
-    print("Ground Truth DataFrame:\n", ground_truth_df)
+    # print("Ground Truth DataFrame:\n", ground_truth_df)
 
     # Validate join type
     if join_type not in ["inner", "outer", "left"]:
@@ -45,11 +45,11 @@ def merge_dataframes(pairs_csv, ground_truth_csv, output_csv, join_type="inner")
     # Merge DataFrames based on the selected join type
     merged_df = pd.merge(pairs_df, ground_truth_df, on=["id1", "id2"], how=join_type)
     
+    print(merged_df)
     # For outer or left joins, fill missing values with 0
     if join_type in ["outer", "left","right"]:
-        print("in here")
-        merged_df.iloc[:, 2:] = merged_df.iloc[:, 2:].fillna(0).astype(int)
-
+        for col in merged_df.columns[2:]:  # Exclude "id1" and "id2"
+            merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce').fillna(0).astype(int)
     
     print(f"{join_type.capitalize()} Join Result:\n", merged_df)
     
