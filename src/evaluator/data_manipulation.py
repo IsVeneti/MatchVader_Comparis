@@ -18,43 +18,44 @@ d2 = {'id': [1, 2, 9, 8,9],
 df2 = pd.DataFrame(d2)
 print(df2.columns[1])
 
-def inner_merge(pairs_csv, ground_truth_csv, output_csv):
-    """_summary_
+import pandas as pd
+
+def merge_dataframes(pairs_csv, ground_truth_csv, output_csv, join_type="inner"):
+    """
+    Merges two CSV files based on id1 and id2 using the specified join type.
 
     Args:
-        pairs_csv (_type_): _description_
-        ground_truth_csv (_type_): _description_
-        output_csv (_type_): _description_
+        pairs_csv (str): Path to the first CSV file.
+        ground_truth_csv (str): Path to the second CSV file.
+        output_csv (str): Path to save the merged CSV file.
+        join_type (str): Type of join to perform. Options: "inner", "outer", "left", "right".
     """
+    # Load DataFrames
     pairs_df = pd.read_csv(pairs_csv)
-    print("pairs_df\n", pairs_df)
+    print("Pairs DataFrame:\n", pairs_df)
+
     ground_truth_df = pd.read_csv(ground_truth_csv)
+    ground_truth_df.columns = pairs_df.columns  # Ensure matching column names
+    print("Ground Truth DataFrame:\n", ground_truth_df)
 
-    ground_truth_df.columns=pairs_df.columns
-    print("ground_truth_df\n", ground_truth_df)
-    # inner join
-    inner_df = pd.merge(pairs_df, ground_truth_df, on=["id1","id2"], how='inner')
-    print(inner_df)
-    inner_df.to_csv(output_csv, index=False)
+    # Validate join type
+    if join_type not in ["inner", "outer", "left"]:
+        raise ValueError("Invalid join type. Choose from 'inner', 'outer', or 'left'.")
 
-def outer_merge(pairs_csv, ground_truth_csv, output_csv):
-    """_summary_
+    # Merge DataFrames based on the selected join type
+    merged_df = pd.merge(pairs_df, ground_truth_df, on=["id1", "id2"], how=join_type)
+    
+    # For outer or left joins, fill missing values with 0
+    if join_type in ["outer", "left","right"]:
+        print("in here")
+        merged_df.iloc[:, 2:] = merged_df.iloc[:, 2:].fillna(0).astype(int)
 
-    Args:
-        pairs_csv (_type_): _description_
-        ground_truth_csv (_type_): _description_
-        output_csv (_type_): _description_
-    """
-    pairs_df = pd.read_csv(pairs_csv)
-    print("pairs_df\n", pairs_df)
-    ground_truth_df = pd.read_csv(ground_truth_csv)
+    
+    print(f"{join_type.capitalize()} Join Result:\n", merged_df)
+    
+    # Save to CSV
+    merged_df.to_csv(output_csv, index=False)
 
-    ground_truth_df.columns=pairs_df.columns
-    print("ground_truth_df\n", ground_truth_df)
-    # inner join
-    inner_df = pd.merge(pairs_df, ground_truth_df, on=["id1","id2"], how='inner')
-    print(inner_df)
-    inner_df.to_csv(output_csv, index=False)
 
 # TODO: Maybe i need to add a column name param?
 def get_paired_ids(full_paired_file):
@@ -89,7 +90,11 @@ def get_paired_ids_no_fullfile(pair_csv,data1,data2):
     result.to_csv("paired_data_id.csv",index=False)
     # print(result)
 
-get_paired_ids_no_fullfile("output.csv","./data/rest1clean.csv","./data/rest2clean.csv")
+# get_paired_ids_no_fullfile("output.csv","./data/rest1clean.csv","./data/rest2clean.csv")
 # get_paired_ids("paired_data_with_indexes.csv")
-inner_merge('paired_data_id.csv', 'data/gtclean_evaluator_comma.csv', 'output_inner.csv')
+merge_dataframes('paired_data_id.csv', 'data/gtclean_evaluator_comma.csv', 'output_merge_inner.csv','inner')
+merge_dataframes('paired_data_id.csv', 'data/gtclean_evaluator_comma.csv', 'output_merge_outer.csv','outer')
+merge_dataframes('paired_data_id.csv', 'data/gtclean_evaluator_comma.csv', 'output_merge_left.csv','left')
+
+
 
