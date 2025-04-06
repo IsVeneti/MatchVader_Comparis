@@ -74,7 +74,7 @@ class LlamaClient:
             max_retries (int, optional): Retry count on empty or irregular response. Defaults to 3.
 
         Returns:
-            Optional[T]: _description_
+            Optional[T]: Validated response object using pydantic or None if validation fails.
         """
         
         messages = [{"role": "system", "content": system_role}] if system_role else []
