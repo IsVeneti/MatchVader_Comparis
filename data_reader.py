@@ -1,7 +1,6 @@
 import csv
 from typing import List, Tuple
 import pandas as pd
-import openpyxl
 
 def read_csv_to_dataframe(file_name: str, delimiter: str) -> pd.DataFrame:
     """
@@ -101,16 +100,15 @@ def save_dataframe(df: pd.DataFrame, file_name: str, file_type: str = 'csv') -> 
         None
     """
     if file_type == 'csv':
-        df.to_csv(file_name, index=False)
+        df.to_csv(file_name, index=False, sep='|')
     elif file_type == 'excel':
         df.to_excel(file_name, index=False)
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
-def main():
-    """
-    Main function to execute the script logic.
-    """
+
+if __name__ == "__main__":
+    
     # Specify the CSV file names
     file1 = 'data/rest1clean.csv'
     file2 = 'data/rest2clean.csv'
@@ -133,8 +131,5 @@ def main():
     print("\nData with indexes:")
     print(data_with_indexes)
 
-    save_dataframe(data_with_indexes, 'data_with_indexes.csv', 'csv')
-    save_dataframe(data_with_indexes, 'data_with_indexes.xlsx', 'excel')
-
-if __name__ == "__main__":
-    main()
+    save_dataframe(data_with_indexes, 'paired_data_with_indexes.csv', 'csv')
+    # save_dataframe(data_with_indexes, 'data_with_indexes.xlsx', 'excel')
