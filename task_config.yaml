@@ -1,0 +1,9 @@
+Pairs:
+  schema: "src.schemas.pairs_schema.PairsSchema"
+  max_tokens: 200
+  temperature: 0.2
+
+Triples:
+  schema: "schemas.triple_schema.TripleSchema"
+  max_tokens: 300
+  temperature: 0.3
