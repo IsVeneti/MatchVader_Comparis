@@ -104,4 +104,4 @@ huggingface-cli login
 
 ## 📜 License
 
-MIT 
+MIT license
