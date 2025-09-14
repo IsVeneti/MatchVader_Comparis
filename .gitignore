@@ -3,6 +3,7 @@ llama-cpp-python/
 models/
 prompt*
 output*
+*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

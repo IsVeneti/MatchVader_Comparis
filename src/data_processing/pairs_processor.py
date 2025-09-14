@@ -81,8 +81,9 @@ def generate_comparison_prompt_json(data1, data2, prompt, include_nans=True):
 # print(df_comparison)  # Prints to console
 
 
-
-# Example usage
-data1, data2 = process_csv("paired_data_with_indexes.csv")
-prompt_table = generate_comparison_prompt_json(data1,data2,"Do these entities match? Answer yes or no")
-prompt_table.to_csv("prompt_attempt2.csv", sep='|')
+if __name__ == "__main__":
+    # Example usage
+    data1, data2 = process_csv("paired_data_with_indexes.csv")
+    print(data1, data2)
+    # prompt_table = generate_comparison_prompt_json(data1,data2,"Do these entities match? Answer yes or no")
+    # prompt_table.to_csv("prompt_attempt2.csv", sep='|')

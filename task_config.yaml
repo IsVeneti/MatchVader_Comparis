@@ -1,9 +1,17 @@
 Pairs:
   schema: "src.schemas.pairs_schema.PairsSchema"
+  entities: ["entity_1", "entity_2"]
+  prompt: "prompts/pairs_prompt.txt"
   max_tokens: 200
   temperature: 0.2
 
 Triples:
-  schema: "schemas.triple_schema.TripleSchema"
+  schema: "src.schemas.triple_schema.TripleSchema"
+  prompt: "prompts/triple_prompt.txt"
   max_tokens: 300
   temperature: 0.3
+
+DummyTask:
+    schema: "src.schemas.dummy_schema.DummySchema"
+    temperature: 0.7
+    max_tokens: 100
