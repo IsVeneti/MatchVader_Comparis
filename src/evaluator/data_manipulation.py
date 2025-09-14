@@ -20,41 +20,44 @@ print(df2.columns[1])
 
 import pandas as pd
 
-def merge_dataframes(pairs_csv, ground_truth_csv, output_csv, join_type="inner"):
+
+def merge_dataframes(pairs_csv, ground_truth_csv, output_csv, join_type="inner", id1_col="id1", id2_col="id2"):
     """
-    Merges two CSV files based on id1 and id2 using the specified join type.
+    Merges two CSV files based on specified id columns using the given join type.
 
     Args:
-        pairs_csv (str): Path to the first CSV file.
-        ground_truth_csv (str): Path to the second CSV file.
+        pairs_csv (str): Path to the first CSV file (e.g., candidate pairs with scores).
+        ground_truth_csv (str): Path to the ground truth CSV file (with matches).
         output_csv (str): Path to save the merged CSV file.
         join_type (str): Type of join to perform. Options: "inner", "outer", "left", "right".
+        id1_col (str): Column name in both files for the first ID (e.g., 'id1').
+        id2_col (str): Column name in both files for the second ID (e.g., 'id2').
     """
     # Load DataFrames
     pairs_df = pd.read_csv(pairs_csv)
-    # print("Pairs DataFrame:\n", pairs_df)
-
     ground_truth_df = pd.read_csv(ground_truth_csv)
-    ground_truth_df.columns = pairs_df.columns  # Ensure matching column names
-    # print("Ground Truth DataFrame:\n", ground_truth_df)
+
+    # Ensure ground truth columns are named correctly
+    gt_cols = ground_truth_df.columns[:2]
+    ground_truth_df = ground_truth_df.rename(columns={gt_cols[0]: id1_col, gt_cols[1]: id2_col})
 
     # Validate join type
-    if join_type not in ["inner", "outer", "left"]:
-        raise ValueError("Invalid join type. Choose from 'inner', 'outer', or 'left'.")
+    if join_type not in ["inner", "outer", "left", "right"]:
+        raise ValueError("Invalid join type. Choose from 'inner', 'outer', 'left', or 'right'.")
 
-    # Merge DataFrames based on the selected join type
-    merged_df = pd.merge(pairs_df, ground_truth_df, on=["id1", "id2"], how=join_type)
-    
-    print(merged_df)
-    # For outer or left joins, fill missing values with 0
-    if join_type in ["outer", "left","right"]:
-        for col in merged_df.columns[2:]:  # Exclude "id1" and "id2"
+    # Merge DataFrames
+    merged_df = pd.merge(pairs_df, ground_truth_df, on=[id1_col, id2_col], how=join_type)
+
+    # Fill missing numeric values with 0 (skip id columns)
+    for col in merged_df.columns:
+        if col not in [id1_col, id2_col]:
             merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce').fillna(0).astype(int)
-    
+
+    # Output
     print(f"{join_type.capitalize()} Join Result:\n", merged_df)
-    
-    # Save to CSV
     merged_df.to_csv(output_csv, index=False)
+    return merged_df
+
 
 
 # TODO: Maybe i need to add a column name param?
@@ -89,6 +92,7 @@ def get_paired_ids_no_fullfile(pair_csv,data1,data2):
 
     result.to_csv("paired_data_id.csv",index=False)
     # print(result)
+
 
 # get_paired_ids_no_fullfile("output.csv","./data/rest1clean.csv","./data/rest2clean.csv")
 # get_paired_ids("paired_data_with_indexes.csv")
