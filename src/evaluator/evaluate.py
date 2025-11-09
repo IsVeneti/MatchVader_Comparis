@@ -1,18 +1,18 @@
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 
-def evaluate_results(merged_csv):
+def evaluate_results(merged_data: pd.DataFrame):
     """
     Evaluates the classification results in the last two columns of the merged CSV using sklearn metrics.
 
     Args:
-        merged_csv (str): Path to the merged CSV file.
+        merged_csv (pd.DataFrame): Merged DataFrame containing predictions and ground truth in the last two columns.
     
     Returns:
         None (Prints evaluation metrics and confusion matrix)
     """
     # Load the merged results
-    df = pd.read_csv(merged_csv)
+    df = merged_data
     
     # Get the last two columns (assumed to be prediction and ground truth)
     y_pred = df.iloc[:, -2]  # Second last column (Predictions)
@@ -32,7 +32,8 @@ def evaluate_results(merged_csv):
     print("\nConfusion Matrix:")
     print(conf_matrix)
 
-
-evaluate_results("output_merge_outer.csv")
-print("inner")
-evaluate_results("output_merge_inner.csv")
+if __name__ == "__main__":
+    print("outer")
+    evaluate_results("output_merge_outer.csv")
+    print("inner")
+    evaluate_results("output_merge_inner.csv")
