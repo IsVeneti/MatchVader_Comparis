@@ -7,6 +7,8 @@ import re
 
 T = TypeVar("T", bound=BaseModel)
 
+
+
 class HuggingFaceLLM:
     """
     LLM wrapper using Hugging Face Transformers for causal language models (e.g., Mistral, LLaMA).
@@ -15,18 +17,24 @@ class HuggingFaceLLM:
     def __init__(
         self,
         model_name: str,
-        temperature: float = 0.0,
+        temperature: float = 0.2,
         max_tokens: int = 256,
         device: str | None = None,
+        hf_token: str | None = NotImplemented
     ):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+         # Load optional token from environment
+        token_args = {"token": hf_token} if hf_token else {}
+        print(hf_token)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name,token=hf_token)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            token=hf_token
         ).to(self.device)
         # Good defaults
         eos_id = self.tokenizer.eos_token_id

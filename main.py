@@ -1,12 +1,17 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 import yaml
 import pandas as pd
+from dotenv import load_dotenv
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
 from src.data_processing.entity_matching_processor import EntityMatchingProcessor  # Import your processor
+
+load_dotenv()
+HF_TOKEN = os.getenv('HF_TOKEN')
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run HuggingFaceLLM with structured prompt output for entity matching.")
@@ -22,6 +27,8 @@ def parse_args():
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
     return parser.parse_args()
+
+
 
 def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, start_index=0, count=None):
     """Process entity pairs and generate structured outputs."""
@@ -46,8 +53,11 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             # Map the entities from config to the formatted entities
             if len(entities_list) >= 2:
-                entity_values[entities_list[0]] = pair_data['entity1_formatted']
-                entity_values[entities_list[1]] = pair_data['entity2_formatted']
+                entity1_clean = {k: v for k, v in pair_data['entity1_raw'].items() if k != 'id'}
+                entity2_clean = {k: v for k, v in pair_data['entity2_raw'].items() if k != 'id'}
+                
+                entity_values[entities_list[0]] = str(entity1_clean)
+                entity_values[entities_list[1]] = str(entity2_clean)
                 
                 # Replace placeholders in prompt
                 for entity in entities_list:
@@ -125,7 +135,7 @@ def main():
     log_path = "./logs.log"
     if args.log_file:
         log_path = Path(args.log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.mkdir(parents=True, exist_ok=True)
     
     # Setup logging
     log_to_console = args.log_console or not args.log_file
@@ -145,7 +155,7 @@ def main():
     schema_path = task_config["schema"]
     entities_list = task_config["entities"]
     prompt_path = task_config["prompt"]
-    temperature = task_config.get("temperature", 0.0)
+    temperature = task_config.get("temperature", 0.5)
     max_tokens = task_config.get("max_tokens", 256)
     
     # Load schema class
@@ -175,12 +185,15 @@ def main():
         logger.warning(f"Expected entities {expected_entities}, got {entities_list}")
         logger.info("Proceeding with provided entities list")
     
+    print(f"HF_TOKEN {HF_TOKEN}")
     # Initialize model
     logger.info(f"Loading Hugging Face model: {args.hf_model}")
     llm = HuggingFaceLLM(
         model_name=args.hf_model,
         temperature=temperature,
         max_tokens=max_tokens,
+        hf_token=HF_TOKEN
+
     )
     logger.info("Model ready.")
     
@@ -203,7 +216,7 @@ def main():
     # Save results if requested
     if args.save:
         save_path = Path(args.save)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.mkdir(parents=True, exist_ok=True)
         
         results_file = save_path / "results.csv"
         results_df.to_csv(results_file, index=False)
