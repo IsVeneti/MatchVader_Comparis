@@ -4,7 +4,8 @@ models/
 prompt*
 output*
 *.log
-results
+results*
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
