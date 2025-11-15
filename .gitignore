@@ -1,7 +1,11 @@
+stuff/
 llama-cpp-python/
 models/
 prompt*
 output*
+*.log
+results*
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
