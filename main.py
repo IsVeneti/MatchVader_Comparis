@@ -12,15 +12,14 @@ from src.data_processing.entity_matching_processor import EntityMatchingProcesso
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
+DATASET_CONFIG_PATH = "configs/dataset_config.yaml"
+TASK_CONFIG_PATH = "configs/task_config.yaml"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run HuggingFaceLLM with structured prompt output for entity matching.")
     parser.add_argument("--hf-model", type=str, default="mistralai/Mistral-7B-Instruct-v0.1", help="Hugging Face model name or path.")
-    parser.add_argument("--task", type=str, required=True, help="Task name (e.g., Pairs) from the config file.")
-    parser.add_argument("--rest1-file", type=str, default="data/rest1clean.csv", help="Path to rest1clean.csv file.")
-    parser.add_argument("--rest2-file", type=str, default="data/rest2clean.csv", help="Path to rest2clean.csv file.")
-    parser.add_argument("--pairs-file", type=str, default="data/d1_pairs.csv", help="Path to d1_pairs.csv file.")
-    parser.add_argument("--config", type=str, default="task_config.yaml", help="Path to the YAML config file.")
+    parser.add_argument("--task", type=str, required=True, help="Task name (e.g., Pairs) from the task config file.")
+    parser.add_argument("--dataset", type=str, required=True, help="Dataset name (e.g., dataset_1, dataset_2) from the dataset config file.")
     parser.add_argument("--log-file", type=str, help="Path to log file.")
     parser.add_argument("--log-console", action="store_true", help="Enable console logging (default if no log file).")
     parser.add_argument("--save", type=str, help="Path to save results (optional).")
@@ -28,6 +27,29 @@ def parse_args():
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
     return parser.parse_args()
 
+
+def load_dataset_config(dataset_config_path, dataset_name, logger):
+    """Load dataset configuration from YAML file."""
+    try:
+        with open(dataset_config_path, "r") as f:
+            dataset_config = yaml.safe_load(f)
+        
+        if dataset_name not in dataset_config:
+            raise ValueError(f"Dataset '{dataset_name}' not found in {dataset_config_path}")
+        
+        dataset = dataset_config[dataset_name]
+        logger.info(f"Loaded dataset config for: {dataset_name}")
+        
+        # Validate required fields
+        required_fields = ['d1', 'd2', 'pairs']
+        missing_fields = [field for field in required_fields if field not in dataset]
+        if missing_fields:
+            raise ValueError(f"Missing required fields in dataset config: {missing_fields}")
+        
+        return dataset
+    except Exception as e:
+        logger.error(f"Failed to load dataset config: {e}")
+        raise
 
 
 def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, start_index=0, count=None):
@@ -132,6 +154,8 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
 
 def main():
     args = parse_args()
+    
+    
     log_path = "./logs.log"
     if args.log_file:
         log_path = Path(args.log_file)
@@ -141,13 +165,22 @@ def main():
     log_to_console = args.log_console or not args.log_file
     logger = setup_logger(to_console=log_to_console, log_file=log_path)
     
-    # Load config
-    with open(args.config, "r") as f:
+    # Load dataset config
+    dataset = load_dataset_config(DATASET_CONFIG_PATH, args.dataset, logger)
+    logger.info(f"Dataset files:")
+    logger.info(f"  d1: {dataset['d1']}")
+    logger.info(f"  d2: {dataset['d2']}")
+    logger.info(f"  pairs: {dataset['pairs']}")
+    if 'gt' in dataset:
+        logger.info(f"  ground truth: {dataset['gt']}")
+    
+    # Load task config
+    with open(TASK_CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
     
     task_config = config.get(args.task)
     if not task_config:
-        raise ValueError(f"Task '{args.task}' not found in {args.config}")
+        raise ValueError(f"Task '{args.task}' not found in {TASK_CONFIG_PATH}")
     
     logger.info(f"Task config: {task_config}")
     
@@ -170,9 +203,9 @@ def main():
     prompt_template = Path(prompt_path).read_text(encoding='utf-8')
     logger.info(f"Loaded prompt template from: {prompt_path}")
     
-    # Initialize entity matching processor
+    # Initialize entity matching processor with dataset config files
     try:
-        processor = EntityMatchingProcessor(args.rest1_file, args.rest2_file, args.pairs_file)
+        processor = EntityMatchingProcessor(dataset['d1'], dataset['d2'], dataset['pairs'])
         logger.info("Entity matching processor initialized successfully")
         logger.info(f"Loaded {len(processor.pairs_df)} pairs for processing")
     except Exception as e:
