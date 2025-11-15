@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument("--log-file", type=str, help="Path to log file.")
     parser.add_argument("--log-console", action="store_true", help="Enable console logging (default if no log file).")
     parser.add_argument("--save", type=str, help="Path to save results (optional).")
+    parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
     return parser.parse_args()
@@ -52,7 +53,8 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         raise
 
 
-def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, start_index=0, count=None):
+def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, 
+                         start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
     """Process entity pairs and generate structured outputs."""
     results = []
     
@@ -153,6 +155,16 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 }
             
             results.append(result)
+        
+        # Partial save logic
+        if partial_save_interval and partial_save_path:
+            pairs_processed = pair_idx - start_index + 1
+            if pairs_processed % partial_save_interval == 0:
+                partial_df = pd.DataFrame(results)
+                partial_file = partial_save_path / "partial_results.csv"
+                partial_df.to_csv(partial_file, index=False)
+                logger.info(f"Partial save completed: {pairs_processed} pairs saved to {partial_file}")
+                print(f"Partial save: {pairs_processed}/{count} pairs processed")
     
     return pd.DataFrame(results)
 
@@ -235,11 +247,22 @@ def main():
     )
     logger.info("Model ready.")
     
+    # Setup partial save path if requested
+    partial_save_path = None
+    if args.partial_save and args.save:
+        partial_save_path = Path(args.save)
+        partial_save_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Partial save enabled: saving every {args.partial_save} pairs to {partial_save_path}")
+    elif args.partial_save and not args.save:
+        logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
+    
     # Process entity pairs
     results_df = process_entity_pairs(
         llm, processor, entities_list, prompt_template, schema_class, logger,
         start_index=args.start_index,
-        count=args.count
+        count=args.count,
+        partial_save_interval=args.partial_save if args.save else None,
+        partial_save_path=partial_save_path
     )
     
     # Print summary
@@ -267,6 +290,16 @@ def main():
             successful_file = save_path / "successful_results.csv"
             successful_results.to_csv(successful_file, index=False)
             logger.info(f"Successful results saved to: {successful_file}")
+        
+        # Delete partial save file if it exists
+        partial_file = save_path / "partial_results.csv"
+        if partial_file.exists():
+            try:
+                partial_file.unlink()
+                logger.info(f"Deleted partial save file: {partial_file}")
+                print(f"Cleaned up partial save file")
+            except Exception as e:
+                logger.warning(f"Could not delete partial save file: {e}")
     
     # Display sample results
     if len(results_df) > 0:
