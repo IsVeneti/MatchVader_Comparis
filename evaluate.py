@@ -1,24 +1,24 @@
 import argparse
 from src.evaluator.data_manipulation import filter_csv_columns, merge_dataframes, merge_response_pairs
-from src.evaluator.evaluate import evaluate_results
+from src.evaluator.evaluate import evaluate_results, save_results_as_csv, save_results_as_json
 from src.data_processing.pairs_to_ids import get_or_create_id_pairs
 import pandas as pd
 
-def run_evaluation(pairs_with_ids, gt_csv, join_type='inner', output_csv=None):
+def run_evaluation(pairs_with_ids, gt_csv, join_type='inner'):
     """Run complete evaluation pipeline."""
     
     # Compare with ground truth
     matches = merge_dataframes(pairs_with_ids, gt_csv, join_type=join_type)
     
     # Calculate metrics
-    evaluate_results(matches)
+    metrics = evaluate_results(matches)
     
     # # Save if specified
     # if output_csv:
     #     matches.to_csv(output_csv, index=False)
     #     print(f"\n✓ Saved matches to '{output_csv}'")
     
-    # return results, matches
+    return metrics
 
 
 if __name__ == '__main__':
@@ -54,12 +54,17 @@ if __name__ == '__main__':
     ground_truth_df = pd.read_csv(args.ground_truth, sep=',')
 
     # Run evaluation
-    run_evaluation(
+    metrics = run_evaluation(
         pairs_from_response,
         ground_truth_df,
-        join_type=args.join,
-        output_csv=args.output
-    )
+        join_type=args.join
+        )
+    
+    print(metrics)
+    if args.output:
+        save_results_as_json(metrics, f"{args.output}.json")
+        # save_results_as_csv(metrics, f"{args.output}.csv")
+        
     
     # # Print results
     # print(f"\n=== EVALUATION RESULTS ({args.join.upper()} JOIN) ===")
