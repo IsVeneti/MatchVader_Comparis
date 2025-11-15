@@ -3,21 +3,21 @@ import json
 
 class EntityMatchingProcessor:
     """
-    A class to process entity matching data from the restaurant datasets
+    A class to process entity matching data from entity datasets
     and prepare them for LLM prompts.
     """
     
-    def __init__(self, rest1_path, rest2_path, pairs_path):
+    def __init__(self, dataset1_path, dataset2_path, pairs_path):
         """
         Initialize with file paths.
         
         Args:
-            rest1_path: Path to rest1clean.csv
-            rest2_path: Path to rest2clean.csv  
-            pairs_path: Path to d1_pairs.csv
+            dataset1_path: Path to first dataset (e.g., rest1clean.csv or abtclean.csv)
+            dataset2_path: Path to second dataset (e.g., rest2clean.csv or buyclean.csv)
+            pairs_path: Path to pairs file
         """
-        self.rest1_path = rest1_path
-        self.rest2_path = rest2_path
+        self.dataset1_path = dataset1_path
+        self.dataset2_path = dataset2_path
         self.pairs_path = pairs_path
         
         # Load the data
@@ -25,19 +25,25 @@ class EntityMatchingProcessor:
     
     def _load_data(self):
         """Load and parse the CSV files."""
-        # Load restaurant datasets with pipe delimiter
-        self.rest1_df = pd.read_csv(self.rest1_path, delimiter='|')
-        self.rest2_df = pd.read_csv(self.rest2_path, delimiter='|')
+        # Load datasets with pipe delimiter
+        self.dataset1_df = pd.read_csv(self.dataset1_path, delimiter='|')
+        self.dataset2_df = pd.read_csv(self.dataset2_path, delimiter='|')
         
         # Load pairs dataset
         self.pairs_df = pd.read_csv(self.pairs_path)
         
-        # Clean column names for easier access
-        self.rest1_df.columns = ['id', 'name', 'phone', 'street']
-        self.rest2_df.columns = ['id', 'name', 'phone', 'street']
+        # Get column names dynamically from pairs file
+        self.col1_name, self.col2_name = self.pairs_df.columns[0], self.pairs_df.columns[1]
         
-        print(f"Loaded {len(self.rest1_df)} entities from rest1")
-        print(f"Loaded {len(self.rest2_df)} entities from rest2") 
+        # Keep original column names from the CSV files - don't hardcode them!
+        # Strip whitespace from column names
+        self.dataset1_df.columns = self.dataset1_df.columns.str.strip()
+        self.dataset2_df.columns = self.dataset2_df.columns.str.strip()
+        
+        print(f"Loaded {len(self.dataset1_df)} entities from {self.col1_name}")
+        print(f"  Columns: {list(self.dataset1_df.columns)}")
+        print(f"Loaded {len(self.dataset2_df)} entities from {self.col2_name}") 
+        print(f"  Columns: {list(self.dataset2_df.columns)}")
         print(f"Loaded {len(self.pairs_df)} pairs")
     
     def format_entity(self, entity_data):
@@ -50,18 +56,18 @@ class EntityMatchingProcessor:
         Returns:
             Formatted string representation of the entity
         """
-        name = str(entity_data['name']).strip() if pd.notna(entity_data['name']) else ''
-        phone = str(entity_data['phone']).strip() if pd.notna(entity_data['phone']) else ''
-        street = str(entity_data['street']).strip() if pd.notna(entity_data['street']) else ''
-        
-        # Create a clean representation
         parts = []
-        if name:
-            parts.append(f"Name: {name}")
-        if phone:
-            parts.append(f"Phone: {phone}")
-        if street:
-            parts.append(f"Street: {street}")
+        
+        # Dynamically format all columns (except 'id' if present)
+        for col in entity_data.index:
+            if col.lower() == 'id':
+                continue  # Skip ID field in the formatted output
+            
+            value = str(entity_data[col]).strip() if pd.notna(entity_data[col]) else ''
+            if value:
+                # Capitalize column name for display
+                col_display = col.replace('_', ' ').title()
+                parts.append(f"{col_display}: {value}")
         
         return ", ".join(parts) if parts else "No information available"
     
@@ -79,17 +85,19 @@ class EntityMatchingProcessor:
             raise IndexError(f"Pair index {pair_index} out of range")
         
         pair = self.pairs_df.iloc[pair_index]
-        rest1_idx = pair['rest1clean.csv']
-        rest2_idx = pair['rest2clean.csv']
+        
+        # Use dynamic column names instead of hardcoded ones
+        dataset1_idx = pair[self.col1_name]
+        dataset2_idx = pair[self.col2_name]
         
         # Get entities by their indices
-        entity1 = self.rest1_df.iloc[rest1_idx]
-        entity2 = self.rest2_df.iloc[rest2_idx]
+        entity1 = self.dataset1_df.iloc[dataset1_idx]
+        entity2 = self.dataset2_df.iloc[dataset2_idx]
         
         return {
             'pair_index': pair_index,
-            'rest1_index': rest1_idx,
-            'rest2_index': rest2_idx,
+            f'{self.col1_name}_index': dataset1_idx,
+            f'{self.col2_name}_index': dataset2_idx,
             'entity1_raw': entity1.to_dict(),
             'entity2_raw': entity2.to_dict(),
             'entity1_formatted': self.format_entity(entity1),
@@ -109,7 +117,7 @@ class EntityMatchingProcessor:
         """
         if template is None:
             template = ("Are those two entities the same?\n"
-                       "Entity 1: {{entity_1}}, Entity 2: {{entity_2}}.\n"
+                       "Entity 1: {entity_1}, Entity 2: {entity_2}.\n"
                        "Please answer in json, {{\"match\":1}} for match or {{\"match\":0}} for no match.")
         
         pair_data = self.get_pair_by_index(pair_index)
@@ -124,8 +132,8 @@ class EntityMatchingProcessor:
             'prompt': prompt,
             'metadata': {
                 'pair_index': pair_index,
-                'rest1_index': pair_data['rest1_index'],
-                'rest2_index': pair_data['rest2_index']
+                f'{self.col1_name}_index': pair_data[f'{self.col1_name}_index'],
+                f'{self.col2_name}_index': pair_data[f'{self.col2_name}_index']
             }
         }
     
@@ -210,11 +218,18 @@ class EntityMatchingProcessor:
 
 # Example usage
 if __name__ == "__main__":
-    # Initialize the processor
+    # Works with restaurant data
+    # processor = EntityMatchingProcessor(
+    #     dataset1_path='data/rest1clean.csv',
+    #     dataset2_path='data/rest2clean.csv', 
+    #     pairs_path='data/d1_pairs.csv'
+    # )
+    
+    # Also works with abt-buy data
     processor = EntityMatchingProcessor(
-        rest1_path='data/rest1clean.csv',
-        rest2_path='data/rest2clean.csv', 
-        pairs_path='data/d1_pairs.csv'
+        dataset1_path='data/d2_data/abtclean.csv',
+        dataset2_path='data/d2_data/buyclean.csv', 
+        pairs_path='data/d2_data/d2_pairs.csv'
     )
     
     # Generate a single prompt

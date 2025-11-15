@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
-from src.data_processing.entity_matching_processor import EntityMatchingProcessor  # Import your processor
+from src.data_processing.entity_matching_processor import EntityMatchingProcessor
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
@@ -62,6 +62,10 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
     
     end_index = min(start_index + count, total_pairs)
     
+    # Get dynamic column names from processor
+    col1_name = processor.col1_name
+    col2_name = processor.col2_name
+    
     for pair_idx in range(start_index, end_index):
         logger.info(f"Processing pair {pair_idx + 1}/{total_pairs} (batch: {pair_idx - start_index + 1}/{count})")
         
@@ -92,12 +96,12 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             response = llm.generate_structured(prompt, schema_class)
             
-            # Create result row
+            # Create result row with dynamic column names
             result = {
                 "row_id": pair_idx + 1,
                 "pair_index": pair_data['pair_index'],
-                "rest1_index": pair_data['rest1_index'],
-                "rest2_index": pair_data['rest2_index']
+                f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                f"{col2_name}_index": pair_data[f'{col2_name}_index']
             }
             
             # Add entity values
@@ -129,8 +133,8 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 result = {
                     "row_id": pair_idx + 1,
                     "pair_index": pair_data['pair_index'],
-                    "rest1_index": pair_data['rest1_index'],
-                    "rest2_index": pair_data['rest2_index'],
+                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
                     "entity1_formatted": pair_data['entity1_formatted'],
                     "entity2_formatted": pair_data['entity2_formatted'],
                     "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
@@ -208,6 +212,7 @@ def main():
         processor = EntityMatchingProcessor(dataset['d1'], dataset['d2'], dataset['pairs'])
         logger.info("Entity matching processor initialized successfully")
         logger.info(f"Loaded {len(processor.pairs_df)} pairs for processing")
+        logger.info(f"Dataset column names: {processor.col1_name}, {processor.col2_name}")
     except Exception as e:
         logger.error(f"Failed to initialize entity matching processor: {e}")
         sys.exit(1)
