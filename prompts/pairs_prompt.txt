@@ -1,0 +1,5 @@
+Are those two entities the same?
+
+Entity 1: {{entity_1}}, Entity 2: {{entity_2}}.
+
+Please answer in json, {"match":1} for match or {"match":0} for no match.
