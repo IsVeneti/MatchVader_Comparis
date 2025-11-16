@@ -53,6 +53,33 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         raise
 
 
+def _replace_prompt_entities(prompt_template, entity_values):
+    """Helper to replace entity placeholders in prompt template.
+    
+    Supports both [entity] and {{entity}} format.
+    """
+    prompt = prompt_template
+    for entity, value in entity_values.items():
+        prompt = prompt.replace(f"[{entity}]", value)
+        prompt = prompt.replace(f"{{{{{entity}}}}}", value)
+    return prompt
+
+
+def _save_partial_results(results, partial_save_path, pairs_processed, total_count, logger):
+    """Helper to save partial results to CSV."""
+    partial_df = pd.DataFrame(results)
+    partial_file = partial_save_path / "partial_results.csv"
+    partial_df.to_csv(partial_file, index=False)
+    logger.info(f"Partial save completed: {pairs_processed} pairs saved to {partial_file}")
+    print(f"Partial save: {pairs_processed}/{total_count} pairs processed")
+
+
+def _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
+    """Check if it's time to do a partial save."""
+    return (partial_save_interval and partial_save_path and 
+            pairs_processed % partial_save_interval == 0)
+
+
 def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, 
                          start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
     """Process entity pairs and generate structured outputs."""
@@ -75,24 +102,17 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             # Get the pair data
             pair_data = processor.get_pair_by_index(pair_idx)
             
-            # Replace entities in prompt template based on entities_list
-            prompt = prompt_template
+            # Build entity values from raw entities (remove 'id' field)
             entity_values = {}
-            
-            # Map the entities from config to the formatted entities
             if len(entities_list) >= 2:
                 entity1_clean = {k: v for k, v in pair_data['entity1_raw'].items() if k != 'id'}
                 entity2_clean = {k: v for k, v in pair_data['entity2_raw'].items() if k != 'id'}
                 
                 entity_values[entities_list[0]] = str(entity1_clean)
                 entity_values[entities_list[1]] = str(entity2_clean)
-                
-                # Replace placeholders in prompt
-                for entity in entities_list:
-                    if entity in entity_values:
-                        # Support both single and double bracket formats
-                        prompt = prompt.replace(f"[{entity}]", entity_values[entity])
-                        prompt = prompt.replace(f"{{{{{entity}}}}}", entity_values[entity])
+            
+            # Replace placeholders in prompt
+            prompt = _replace_prompt_entities(prompt_template, entity_values)
             
             logger.debug(f"Generated prompt: {prompt[:200]}{'...' if len(prompt) > 200 else ''}")
             
@@ -103,21 +123,13 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 "row_id": pair_idx + 1,
                 "pair_index": pair_data['pair_index'],
                 f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                f"{col2_name}_index": pair_data[f'{col2_name}_index']
-            }
-            
-            # Add entity values
-            result.update(entity_values)
-            
-            result.update({
-                "entity1_formatted": pair_data['entity1_formatted'],
-                "entity2_formatted": pair_data['entity2_formatted'],
+                f"{col2_name}_index": pair_data[f'{col2_name}_index'],
                 "entity1_raw": str(pair_data['entity1_raw']),
                 "entity2_raw": str(pair_data['entity2_raw']),
                 "prompt": prompt,
                 "response": str(response),
                 "success": True
-            })
+            }
             
             # Add individual fields from the response
             if hasattr(response, 'model_dump'):
@@ -137,15 +149,12 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                     "pair_index": pair_data['pair_index'],
                     f"{col1_name}_index": pair_data[f'{col1_name}_index'],
                     f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                    "entity1_formatted": pair_data['entity1_formatted'],
-                    "entity2_formatted": pair_data['entity2_formatted'],
+                    "entity1_raw": str(pair_data['entity1_raw']),
+                    "entity2_raw": str(pair_data['entity2_raw']),
                     "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
                     "error": str(e),
                     "success": False
                 }
-                if len(entities_list) >= 2:
-                    result[entities_list[0]] = pair_data['entity1_formatted']
-                    result[entities_list[1]] = pair_data['entity2_formatted']
             except:
                 result = {
                     "row_id": pair_idx + 1,
@@ -156,15 +165,12 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             results.append(result)
         
-        # Partial save logic
-        if partial_save_interval and partial_save_path:
-            pairs_processed = pair_idx - start_index + 1
-            if pairs_processed % partial_save_interval == 0:
-                partial_df = pd.DataFrame(results)
                 partial_file = partial_save_path / "partial_results.csv"
                 partial_df.to_csv(partial_file, index=False)
-                logger.info(f"Partial save completed: {pairs_processed} pairs saved to {partial_file}")
-                print(f"Partial save: {pairs_processed}/{count} pairs processed")
+        # Check for partial save
+        pairs_processed = pair_idx - start_index + 1
+        if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
+            _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
     
     return pd.DataFrame(results)
 
