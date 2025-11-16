@@ -8,29 +8,53 @@ from dotenv import load_dotenv
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
-from src.data_processing.entity_matching_processor import EntityMatchingProcessor  # Import your processor
+from src.data_processing.entity_matching_processor import EntityMatchingProcessor
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
+DATASET_CONFIG_PATH = "configs/dataset_config.yaml"
+TASK_CONFIG_PATH = "configs/task_config.yaml"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run HuggingFaceLLM with structured prompt output for entity matching.")
     parser.add_argument("--hf-model", type=str, default="mistralai/Mistral-7B-Instruct-v0.1", help="Hugging Face model name or path.")
-    parser.add_argument("--task", type=str, required=True, help="Task name (e.g., Pairs) from the config file.")
-    parser.add_argument("--rest1-file", type=str, default="data/rest1clean.csv", help="Path to rest1clean.csv file.")
-    parser.add_argument("--rest2-file", type=str, default="data/rest2clean.csv", help="Path to rest2clean.csv file.")
-    parser.add_argument("--pairs-file", type=str, default="data/d1_pairs.csv", help="Path to d1_pairs.csv file.")
-    parser.add_argument("--config", type=str, default="task_config.yaml", help="Path to the YAML config file.")
+    parser.add_argument("--task", type=str, required=True, help="Task name (e.g., Pairs) from the task config file.")
+    parser.add_argument("--dataset", type=str, required=True, help="Dataset name (e.g., dataset_1, dataset_2) from the dataset config file.")
     parser.add_argument("--log-file", type=str, help="Path to log file.")
     parser.add_argument("--log-console", action="store_true", help="Enable console logging (default if no log file).")
     parser.add_argument("--save", type=str, help="Path to save results (optional).")
+    parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
     return parser.parse_args()
 
 
+def load_dataset_config(dataset_config_path, dataset_name, logger):
+    """Load dataset configuration from YAML file."""
+    try:
+        with open(dataset_config_path, "r") as f:
+            dataset_config = yaml.safe_load(f)
+        
+        if dataset_name not in dataset_config:
+            raise ValueError(f"Dataset '{dataset_name}' not found in {dataset_config_path}")
+        
+        dataset = dataset_config[dataset_name]
+        logger.info(f"Loaded dataset config for: {dataset_name}")
+        
+        # Validate required fields
+        required_fields = ['d1', 'd2', 'pairs']
+        missing_fields = [field for field in required_fields if field not in dataset]
+        if missing_fields:
+            raise ValueError(f"Missing required fields in dataset config: {missing_fields}")
+        
+        return dataset
+    except Exception as e:
+        logger.error(f"Failed to load dataset config: {e}")
+        raise
 
-def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, start_index=0, count=None):
+
+def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, 
+                         start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
     """Process entity pairs and generate structured outputs."""
     results = []
     
@@ -39,6 +63,10 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
         count = total_pairs - start_index
     
     end_index = min(start_index + count, total_pairs)
+    
+    # Get dynamic column names from processor
+    col1_name = processor.col1_name
+    col2_name = processor.col2_name
     
     for pair_idx in range(start_index, end_index):
         logger.info(f"Processing pair {pair_idx + 1}/{total_pairs} (batch: {pair_idx - start_index + 1}/{count})")
@@ -70,12 +98,12 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             response = llm.generate_structured(prompt, schema_class)
             
-            # Create result row
+            # Create result row with dynamic column names
             result = {
                 "row_id": pair_idx + 1,
                 "pair_index": pair_data['pair_index'],
-                "rest1_index": pair_data['rest1_index'],
-                "rest2_index": pair_data['rest2_index']
+                f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                f"{col2_name}_index": pair_data[f'{col2_name}_index']
             }
             
             # Add entity values
@@ -107,8 +135,8 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 result = {
                     "row_id": pair_idx + 1,
                     "pair_index": pair_data['pair_index'],
-                    "rest1_index": pair_data['rest1_index'],
-                    "rest2_index": pair_data['rest2_index'],
+                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
                     "entity1_formatted": pair_data['entity1_formatted'],
                     "entity2_formatted": pair_data['entity2_formatted'],
                     "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
@@ -127,11 +155,23 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 }
             
             results.append(result)
+        
+        # Partial save logic
+        if partial_save_interval and partial_save_path:
+            pairs_processed = pair_idx - start_index + 1
+            if pairs_processed % partial_save_interval == 0:
+                partial_df = pd.DataFrame(results)
+                partial_file = partial_save_path / "partial_results.csv"
+                partial_df.to_csv(partial_file, index=False)
+                logger.info(f"Partial save completed: {pairs_processed} pairs saved to {partial_file}")
+                print(f"Partial save: {pairs_processed}/{count} pairs processed")
     
     return pd.DataFrame(results)
 
 def main():
     args = parse_args()
+    
+    
     log_path = "./logs.log"
     if args.log_file:
         log_path = Path(args.log_file)
@@ -141,13 +181,22 @@ def main():
     log_to_console = args.log_console or not args.log_file
     logger = setup_logger(to_console=log_to_console, log_file=log_path)
     
-    # Load config
-    with open(args.config, "r") as f:
+    # Load dataset config
+    dataset = load_dataset_config(DATASET_CONFIG_PATH, args.dataset, logger)
+    logger.info(f"Dataset files:")
+    logger.info(f"  d1: {dataset['d1']}")
+    logger.info(f"  d2: {dataset['d2']}")
+    logger.info(f"  pairs: {dataset['pairs']}")
+    if 'gt' in dataset:
+        logger.info(f"  ground truth: {dataset['gt']}")
+    
+    # Load task config
+    with open(TASK_CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
     
     task_config = config.get(args.task)
     if not task_config:
-        raise ValueError(f"Task '{args.task}' not found in {args.config}")
+        raise ValueError(f"Task '{args.task}' not found in {TASK_CONFIG_PATH}")
     
     logger.info(f"Task config: {task_config}")
     
@@ -170,11 +219,12 @@ def main():
     prompt_template = Path(prompt_path).read_text(encoding='utf-8')
     logger.info(f"Loaded prompt template from: {prompt_path}")
     
-    # Initialize entity matching processor
+    # Initialize entity matching processor with dataset config files
     try:
-        processor = EntityMatchingProcessor(args.rest1_file, args.rest2_file, args.pairs_file)
+        processor = EntityMatchingProcessor(dataset['d1'], dataset['d2'], dataset['pairs'])
         logger.info("Entity matching processor initialized successfully")
         logger.info(f"Loaded {len(processor.pairs_df)} pairs for processing")
+        logger.info(f"Dataset column names: {processor.col1_name}, {processor.col2_name}")
     except Exception as e:
         logger.error(f"Failed to initialize entity matching processor: {e}")
         sys.exit(1)
@@ -197,11 +247,22 @@ def main():
     )
     logger.info("Model ready.")
     
+    # Setup partial save path if requested
+    partial_save_path = None
+    if args.partial_save and args.save:
+        partial_save_path = Path(args.save)
+        partial_save_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Partial save enabled: saving every {args.partial_save} pairs to {partial_save_path}")
+    elif args.partial_save and not args.save:
+        logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
+    
     # Process entity pairs
     results_df = process_entity_pairs(
         llm, processor, entities_list, prompt_template, schema_class, logger,
         start_index=args.start_index,
-        count=args.count
+        count=args.count,
+        partial_save_interval=args.partial_save if args.save else None,
+        partial_save_path=partial_save_path
     )
     
     # Print summary
@@ -229,6 +290,16 @@ def main():
             successful_file = save_path / "successful_results.csv"
             successful_results.to_csv(successful_file, index=False)
             logger.info(f"Successful results saved to: {successful_file}")
+        
+        # Delete partial save file if it exists
+        partial_file = save_path / "partial_results.csv"
+        if partial_file.exists():
+            try:
+                partial_file.unlink()
+                logger.info(f"Deleted partial save file: {partial_file}")
+                print(f"Cleaned up partial save file")
+            except Exception as e:
+                logger.warning(f"Could not delete partial save file: {e}")
     
     # Display sample results
     if len(results_df) > 0:

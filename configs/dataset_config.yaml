@@ -1,0 +1,13 @@
+dataset_1:
+  d1: "data/d1_data/rest1clean.csv"
+  d2: "data/d1_data/rest2clean.csv"
+  gt: "data/d1_data/gtclean_evaluator_comma.csv"
+  pairs: "data/d1_data/d1_pairs.csv"
+  pairs_with_ids: "data/d1_data/d1_pairs_with_ids.csv"
+
+dataset_2:
+  d1: "data/d2_data/abtclean.csv"
+  d2: "data/d2_data/buyclean.csv"
+  gt: "data/d2_data/d2_gtclean.csv"
+  pairs: "data/d2_data/d2_pairs.csv"
+  pairs_with_ids: "data/d2_data/d2_pairs_with_ids.csv"
