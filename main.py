@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
-from src.data_processing.entity_matching_processor import EntityMatchingProcessor  # Import your processor
+from src.data_processing.entity_matching_processor import EntityMatchingProcessor
 
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument("--log-file", type=str, help="Path to log file.")
     parser.add_argument("--log-console", action="store_true", help="Enable console logging (default if no log file).")
     parser.add_argument("--save", type=str, help="Path to save results (optional).")
+    parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
     return parser.parse_args()
@@ -52,7 +53,8 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         raise
 
 
-def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, start_index=0, count=None):
+def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, 
+                         start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
     """Process entity pairs and generate structured outputs."""
     results = []
     
@@ -61,6 +63,10 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
         count = total_pairs - start_index
     
     end_index = min(start_index + count, total_pairs)
+    
+    # Get dynamic column names from processor
+    col1_name = processor.col1_name
+    col2_name = processor.col2_name
     
     for pair_idx in range(start_index, end_index):
         logger.info(f"Processing pair {pair_idx + 1}/{total_pairs} (batch: {pair_idx - start_index + 1}/{count})")
@@ -92,12 +98,12 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             response = llm.generate_structured(prompt, schema_class)
             
-            # Create result row
+            # Create result row with dynamic column names
             result = {
                 "row_id": pair_idx + 1,
                 "pair_index": pair_data['pair_index'],
-                "rest1_index": pair_data['rest1_index'],
-                "rest2_index": pair_data['rest2_index']
+                f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                f"{col2_name}_index": pair_data[f'{col2_name}_index']
             }
             
             # Add entity values
@@ -129,8 +135,8 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 result = {
                     "row_id": pair_idx + 1,
                     "pair_index": pair_data['pair_index'],
-                    "rest1_index": pair_data['rest1_index'],
-                    "rest2_index": pair_data['rest2_index'],
+                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
                     "entity1_formatted": pair_data['entity1_formatted'],
                     "entity2_formatted": pair_data['entity2_formatted'],
                     "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
@@ -149,6 +155,16 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
                 }
             
             results.append(result)
+        
+        # Partial save logic
+        if partial_save_interval and partial_save_path:
+            pairs_processed = pair_idx - start_index + 1
+            if pairs_processed % partial_save_interval == 0:
+                partial_df = pd.DataFrame(results)
+                partial_file = partial_save_path / "partial_results.csv"
+                partial_df.to_csv(partial_file, index=False)
+                logger.info(f"Partial save completed: {pairs_processed} pairs saved to {partial_file}")
+                print(f"Partial save: {pairs_processed}/{count} pairs processed")
     
     return pd.DataFrame(results)
 
@@ -208,6 +224,7 @@ def main():
         processor = EntityMatchingProcessor(dataset['d1'], dataset['d2'], dataset['pairs'])
         logger.info("Entity matching processor initialized successfully")
         logger.info(f"Loaded {len(processor.pairs_df)} pairs for processing")
+        logger.info(f"Dataset column names: {processor.col1_name}, {processor.col2_name}")
     except Exception as e:
         logger.error(f"Failed to initialize entity matching processor: {e}")
         sys.exit(1)
@@ -230,11 +247,22 @@ def main():
     )
     logger.info("Model ready.")
     
+    # Setup partial save path if requested
+    partial_save_path = None
+    if args.partial_save and args.save:
+        partial_save_path = Path(args.save)
+        partial_save_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Partial save enabled: saving every {args.partial_save} pairs to {partial_save_path}")
+    elif args.partial_save and not args.save:
+        logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
+    
     # Process entity pairs
     results_df = process_entity_pairs(
         llm, processor, entities_list, prompt_template, schema_class, logger,
         start_index=args.start_index,
-        count=args.count
+        count=args.count,
+        partial_save_interval=args.partial_save if args.save else None,
+        partial_save_path=partial_save_path
     )
     
     # Print summary
@@ -262,6 +290,16 @@ def main():
             successful_file = save_path / "successful_results.csv"
             successful_results.to_csv(successful_file, index=False)
             logger.info(f"Successful results saved to: {successful_file}")
+        
+        # Delete partial save file if it exists
+        partial_file = save_path / "partial_results.csv"
+        if partial_file.exists():
+            try:
+                partial_file.unlink()
+                logger.info(f"Deleted partial save file: {partial_file}")
+                print(f"Cleaned up partial save file")
+            except Exception as e:
+                logger.warning(f"Could not delete partial save file: {e}")
     
     # Display sample results
     if len(results_df) > 0:

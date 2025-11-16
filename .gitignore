@@ -1,7 +1,6 @@
 stuff/
 llama-cpp-python/
 models/
-prompt*
 output*
 *.log
 results*

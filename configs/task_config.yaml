@@ -3,7 +3,7 @@ Pairs:
   entities: ["entity_1", "entity_2"]
   prompt: "prompts/pairs_prompt.txt"
   max_tokens: 200
-  temperature: 0.2
+  temperature: 0.7
 
 Triples:
   schema: "src.schemas.triple_schema.TripleSchema"
