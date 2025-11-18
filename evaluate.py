@@ -31,9 +31,14 @@ if __name__ == '__main__':
     
     # Get paths from config
     dataset_config = CONFIG[args.dataset]
-    pairs_path = dataset_config['pairs']
+    pairs_path = dataset_config['pairs_with_ids']
     ground_truth_path = dataset_config['gt']
     
+    # This currently doesn't work because i used the pairs with indexes to run the LLM
+    # TODO: Fix this
+    # pairs_from_response = filter_csv_columns(args.response_csv, columns=['id1', 'id2', 'match'])
+
+
     # Process and evaluate
     pairs_from_response = merge_response_pairs(args.response_csv, pairs_path)
     ground_truth_df = pd.read_csv(ground_truth_path)

@@ -1,41 +1,17 @@
-
 # importing pandas
-import pandas as pd
- 
-
-# Creating Dictionary
-d1 = {'id': [1, 2, 9, 12],
-    'val1': ['a', 'b', 'f', 'd'],
-    'res': [1,1,0,0]}
- 
-df1 = pd.DataFrame(d1)
- 
-
-# Creating dictionary
-d2 = {'id': [1, 2, 9, 8,9],
-    'val2': ['p', 'b', 'r', 's','f'],
-    'match':[1,1,1,1,1]}
-df2 = pd.DataFrame(d2)
-print(df2.columns[1])
-
 import pandas as pd
 
 
 def merge_dataframes(pairs: pd.DataFrame, ground_truth: pd.DataFrame, 
-                     join_type="inner",
-                     pairs_cols=("id1", "id2"),
-                     gt_cols=("D1", "D2"),
-                     gt_sep=','):
+                     join_type="inner"):
     """
-    Merges two dataframes based on specified id columns using the given join type.
+    Merges two dataframes based on their first two columns using the given join type.
+    Automatically renames the first two columns of each DataFrame to 'id1' and 'id2'.
     
     Args:
-        pairs_csv (str): Path to the first CSV file (e.g., candidate pairs with scores).
-        ground_truth_csv (str): Path to the ground truth CSV file (with matches).
+        pairs (pd.DataFrame): DataFrame with candidate pairs (can include scores).
+        ground_truth (pd.DataFrame): Ground truth DataFrame (with matches).
         join_type (str): Type of join to perform. Options: "inner", "outer", "left", "right".
-        pairs_cols (tuple): Column names for IDs in pairs CSV, e.g., ("id1", "id2").
-        gt_cols (tuple): Column names for IDs in ground truth CSV, e.g., ("D1", "D2").
-        gt_sep (str): Separator for ground truth CSV (default: '|').
     
     Returns:
         pd.DataFrame: Merged dataframe.
@@ -43,17 +19,26 @@ def merge_dataframes(pairs: pd.DataFrame, ground_truth: pd.DataFrame,
     # Validate join type
     if join_type not in ["inner", "outer", "left", "right"]:
         raise ValueError("Invalid join type. Choose from 'inner', 'outer', 'left', or 'right'.")
+    
     pairs_df = pairs.copy()
     ground_truth_df = ground_truth.copy()
 
-    # Rename columns to common names for merging
-    pairs_df = pairs_df.rename(columns={
-        pairs_cols[0]: 'id1', 
-        pairs_cols[1]: 'id2'
-    })
-    print(gt_cols[0],gt_cols[1])
-    ground_truth_df = ground_truth_df.rename(columns={gt_cols[0]: 'id1', gt_cols[1]: 'id2'})
-    print("Ground truth columns:", ground_truth_df.columns)
+    # Simply rename first two columns to id1, id2
+    pairs_df = pairs_df.rename(columns={pairs_df.columns[0]: "id1", pairs_df.columns[1]: "id2"})
+    ground_truth_df = ground_truth_df.rename(columns={ground_truth_df.columns[0]: "id1", ground_truth_df.columns[1]: "id2"})
+
+    # DEBUG - Check data types and sample values
+    print("Pairs DataFrame:")
+    print(f"  Columns: {pairs_df.columns.tolist()}")
+    print(f"  id1 dtype: {pairs_df['id1'].dtype}, id2 dtype: {pairs_df['id2'].dtype}")
+    print(f"  Sample: {pairs_df[['id1', 'id2']].head(3).to_dict('records')}")
+    
+    print("\nGround Truth DataFrame:")
+    print(f"  Columns: {ground_truth_df.columns.tolist()}")
+    print(f"  id1 dtype: {ground_truth_df['id1'].dtype}, id2 dtype: {ground_truth_df['id2'].dtype}")
+    print(f"  Sample: {ground_truth_df[['id1', 'id2']].head(3).to_dict('records')}")
+    
+    
     # Merge DataFrames
     merged_df = pd.merge(
         pairs_df, 
@@ -70,18 +55,18 @@ def merge_dataframes(pairs: pd.DataFrame, ground_truth: pd.DataFrame,
     
     return merged_df
 
-# TODO: I fucked up my results, so this is a quick fix to merge based on existing 'match' column
+
 def merge_response_pairs(llm_response_csv, entity_mappings_csv):
     """
     Merges two CSV files by extracting the match values from csv1
     and appending them as a new column to csv2.
     
     Parameters:
-    llm_response_csv (str): File path to the first CSV containing LLM responses.
-    entity_mappings_csv (str): File path to the second CSV containing entity mappings.
+        llm_response_csv (str): File path to the first CSV containing LLM responses.
+        entity_mappings_csv (str): File path to the second CSV containing entity mappings.
     
     Returns:
-    None: Saves the merged CSV to the specified output path.
+        pd.DataFrame: DataFrame with match column added from llm_response_csv.
     """
     # Read csv1
     df1 = pd.read_csv(llm_response_csv)
@@ -102,14 +87,14 @@ def merge_response_pairs(llm_response_csv, entity_mappings_csv):
     
     return df2
 
-# TODO: This works for binary pairs, may have problems with multiples - check alternatives
+
 def filter_csv_columns(input_csv, columns):
     """
-    Reads a CSV file and saves a new CSV with only the specified columns.
+    Reads a CSV file and returns a DataFrame with only the specified columns.
     
     Parameters:
-    input_csv (str): File path to the input CSV.
-    columns (list): List of column names to keep in the output CSV.
+        input_csv (str): File path to the input CSV.
+        columns (list): List of column names to keep in the output.
     
     Returns:
         pd.DataFrame: DataFrame containing only the specified columns.
@@ -129,11 +114,9 @@ def filter_csv_columns(input_csv, columns):
 
 
 if __name__ == "__main__":
-    # get_paired_ids_no_fullfile("output.csv","./data/rest1clean.csv","./data/rest2clean.csv")
-    # get_paired_ids("paired_data_with_indexes.csv")
-    merged_inner = merge_dataframes('data/d1_data/d1_pairs_with_ids.csv', 'data/d1_data/gtclean_evaluator_comma.csv', 'outer',pairs_cols=("id1","id2"),gt_cols=("D1","D2"))
-    # merge_dataframes('paired_data_id.csv', 'data/d1_data/gtclean_evaluator_comma.csv', 'outer',pairs_cols=("rest1_index","rest2_index"))
-    # merge_dataframes('paired_data_id.csv', 'data/d1_data/gtclean_evaluator_comma.csv', 'left',pairs_cols=("rest1_index","rest2_index"))
-    print("Hello")
-
-
+    # Example usage:
+    # gt_df = load_ground_truth('data/ground_truth.csv')  # Auto-detects separator, adds match column
+    # pairs_df = pd.read_csv('data/pairs.csv')
+    # merged = merge_dataframes(pairs_df, gt_df, 'outer')  # First 2 columns automatically used
+    
+    print("Module loaded successfully.")
