@@ -1,5 +1,49 @@
 # importing pandas
+import csv
 import pandas as pd
+
+
+def load_csv_with_separator_detection(csv_path):
+    """
+    Load CSV with automatic separator detection using csv.Sniffer.
+    
+    Args:
+        csv_path (str): Path to CSV file
+        separator (str, optional): Separator to use. If None, will auto-detect.
+    
+    Returns:
+        pd.DataFrame: Loaded dataframe
+    """
+    # Use provided separator or detect it
+    with open(csv_path, 'r') as f:
+        sample = f.read(4096)  # Read first 4KB for detection
+        sniffer = csv.Sniffer()
+        separator = sniffer.sniff(sample).delimiter
+    
+    # Load the CSV
+    df = pd.read_csv(csv_path, sep=separator)
+    
+    return df
+
+
+def load_ground_truth(ground_truth_path):
+    """
+    Load ground truth CSV with automatic separator detection and add match column.
+    
+    Args:
+        ground_truth_path (str): Path to ground truth CSV file
+    
+    Returns:
+        pd.DataFrame: Ground truth dataframe with 'match' column set to 1
+    """
+    # Load the ground truth using separator detection
+    gt_df = load_csv_with_separator_detection(ground_truth_path)
+    
+    # Add match column with all 1s (these are true matches)
+    gt_df['match'] = 1
+    
+    return gt_df
+
 
 
 def merge_dataframes(pairs: pd.DataFrame, ground_truth: pd.DataFrame, 
@@ -69,14 +113,14 @@ def merge_response_pairs(llm_response_csv, entity_mappings_csv):
         pd.DataFrame: DataFrame with match column added from llm_response_csv.
     """
     # Read csv1
-    df1 = pd.read_csv(llm_response_csv)
+    df1 = load_csv_with_separator_detection(llm_response_csv)
     
     # Check if 'match' column exists
     if 'match' not in df1.columns:
         raise ValueError("The 'match' column does not exist in llm_response_csv.")
     
     # Read csv2
-    df2 = pd.read_csv(entity_mappings_csv)
+    df2 = load_csv_with_separator_detection(entity_mappings_csv)
     
     # Ensure index alignment
     if len(df1) != len(df2):

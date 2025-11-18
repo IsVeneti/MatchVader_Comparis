@@ -1,7 +1,7 @@
 import argparse
 from llama_cpp import Path
 import yaml
-from src.evaluator.data_manipulation import merge_dataframes, merge_response_pairs
+from src.evaluator.data_manipulation import load_csv_with_separator_detection, load_ground_truth, merge_dataframes, merge_response_pairs
 from src.evaluator.evaluate import evaluate_results, save_results_as_json
 import pandas as pd
 
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # Process and evaluate
     pairs_from_response = merge_response_pairs(args.response_csv, pairs_path)
-    ground_truth_df = pd.read_csv(ground_truth_path)
+    ground_truth_df = load_ground_truth(ground_truth_path)
     
     metrics = run_evaluation(pairs_from_response, ground_truth_df, join_type=args.join)
     
@@ -51,4 +51,3 @@ if __name__ == '__main__':
     response_path = Path(args.response_csv)
     output_path = response_path.parent / f"{response_path.stem}_{args.join}_eval.json"
     save_results_as_json(metrics, str(output_path))
-    print(f"\n✓ Saved results to '{output_path}'")
