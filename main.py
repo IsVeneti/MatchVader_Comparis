@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument("--count", type=int, help="Number of pairs to procesas (default: all from start-index).")
     return parser.parse_args()
 
+# TODO: Add a file in output with prompt, task_config, hf-model, dataset_config used for reproducibility
 
 def load_dataset_config(dataset_config_path, dataset_name, logger):
     """Load dataset configuration from YAML file."""
