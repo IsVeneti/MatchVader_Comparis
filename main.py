@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
+    parser.add_argument("-p","--pairs-per-prompt", type=int, default=1, help="Number of pairs to process in a single prompt (default: 1).")
     return parser.parse_args()
 
 
@@ -53,7 +54,7 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         raise
 
 
-def _replace_prompt_entities(prompt_template, entity_values):
+def _replace_prompt_entities(prompt_template, entity_values):  
     """Helper to replace entity placeholders in prompt template.
     
     Supports both [entity] and {{entity}} format.
@@ -80,9 +81,9 @@ def _should_partial_save(pairs_processed, partial_save_interval, partial_save_pa
             pairs_processed % partial_save_interval == 0)
 
 
-def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_class, logger, 
-                         start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
-    """Process entity pairs and generate structured outputs."""
+def process_entity_pairs_single(llm, processor, entities_list, prompt_template, schema_class, logger, 
+                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+    """Process entity pairs one at a time (original behavior)."""
     results = []
     
     total_pairs = len(processor.pairs_df)
@@ -117,7 +118,7 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             logger.debug(f"Generated prompt: {prompt[:200]}{'...' if len(prompt) > 200 else ''}")
             
             response = llm.generate_structured(prompt, schema_class)
-            
+
             # Create result row with dynamic column names
             result = {
                 "row_id": pair_idx + 1,
@@ -140,7 +141,7 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
         except Exception as e:
             logger.error(f"Failed to process pair {pair_idx + 1}: {e}")
-            
+
             # Try to get pair data for error logging
             try:
                 pair_data = processor.get_pair_by_index(pair_idx)
@@ -165,25 +166,135 @@ def process_entity_pairs(llm, processor, entities_list, prompt_template, schema_
             
             results.append(result)
         
-                partial_file = partial_save_path / "partial_results.csv"
-                partial_df.to_csv(partial_file, index=False)
-        # Check for partial save
         pairs_processed = pair_idx - start_index + 1
         if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
             _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
     
     return pd.DataFrame(results)
 
+
+def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger, 
+                               start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+    """Process multiple entity pairs in a single prompt using static schema."""
+    results = []
+    
+    total_pairs = len(processor.pairs_df)
+    if count is None:
+        count = total_pairs - start_index
+    
+    end_index = min(start_index + count, total_pairs)
+    
+    col1_name = processor.col1_name
+    col2_name = processor.col2_name
+    
+    # Process in batches
+    batch_num = 0
+    for batch_start in range(start_index, end_index, pairs_per_prompt):
+        batch_end = min(batch_start + pairs_per_prompt, end_index)
+        actual_pairs_in_batch = batch_end - batch_start
+        batch_num += 1
+        
+        logger.info(f"Processing batch {batch_num} with pairs {batch_start + 1}-{batch_end} ({actual_pairs_in_batch} pairs)")
+        
+        try:
+            # Collect all pairs in this batch
+            batch_pairs = []
+            entity_values = {}
+            
+            for i, pair_idx in enumerate(range(batch_start, batch_end)):
+                pair_data = processor.get_pair_by_index(pair_idx)
+                batch_pairs.append(pair_data)
+                
+                # Create entity placeholders for this pair
+                entity1_clean = {k: v for k, v in pair_data['entity1_raw'].items() if k != 'id'}
+                entity2_clean = {k: v for k, v in pair_data['entity2_raw'].items() if k != 'id'}
+                
+                # Use indexed entity names: entity_1a, entity_1b for pair 1, entity_2a, entity_2b for pair 2, etc.
+                pair_num = i + 1
+                entity_values[f"entity_{pair_num}a"] = str(entity1_clean)
+                entity_values[f"entity_{pair_num}b"] = str(entity2_clean)
+            
+            # Replace placeholders in prompt
+            prompt = _replace_prompt_entities(prompt_template, entity_values)
+            
+            logger.debug(f"Generated prompt for batch: {prompt[:300]}{'...' if len(prompt) > 300 else ''}")
+            
+            # Get LLM response using the provided schema
+            response = llm.generate_structured(prompt, schema_class)
+            
+            # Parse response and create individual results
+            response_dict = response.model_dump() if hasattr(response, 'model_dump') else {}
+            
+            for i, pair_data in enumerate(batch_pairs):
+                pair_num = i + 1
+                match_field = f"pair_{pair_num}_match"
+                match_value = response_dict.get(match_field, None)
+                
+                result = {
+                    "row_id": pair_data['pair_index'] + 1,
+                    "pair_index": pair_data['pair_index'],
+                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
+                    "entity1_raw": str(pair_data['entity1_raw']),
+                    "entity2_raw": str(pair_data['entity2_raw']),
+                    "batch_num": batch_num,
+                    "pairs_in_batch": actual_pairs_in_batch,
+                    "prompt": prompt,
+                    "response": str(response),
+                    "match": match_value,
+                    "success": True
+                }
+                
+                results.append(result)
+                logger.info(f"Pair {pair_data['pair_index'] + 1} processed successfully (match: {match_value})")
+            
+        except Exception as e:
+            logger.error(f"Failed to process batch {batch_num} (pairs {batch_start + 1}-{batch_end}): {e}")
+            
+            # Create error results for all pairs in this batch
+            for pair_idx in range(batch_start, batch_end):
+                try:
+                    pair_data = processor.get_pair_by_index(pair_idx)
+                    result = {
+                        "row_id": pair_data['pair_index'] + 1,
+                        "pair_index": pair_data['pair_index'],
+                        f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+                        f"{col2_name}_index": pair_data[f'{col2_name}_index'],
+                        "entity1_raw": str(pair_data['entity1_raw']),
+                        "entity2_raw": str(pair_data['entity2_raw']),
+                        "batch_num": batch_num,
+                        "pairs_in_batch": actual_pairs_in_batch,
+                        "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
+                        "error": str(e),
+                        "success": False
+                    }
+                except:
+                    result = {
+                        "row_id": pair_idx + 1,
+                        "pair_index": pair_idx,
+                        "batch_num": batch_num,
+                        "error": str(e),
+                        "success": False
+                    }
+                
+                results.append(result)
+        
+        # Check for partial save
+        pairs_processed = batch_end - start_index
+        if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
+            _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
+    
+    return pd.DataFrame(results)
+
+
 def main():
     args = parse_args()
-    
     
     log_path = "./logs.log"
     if args.log_file:
         log_path = Path(args.log_file)
         log_path.mkdir(parents=True, exist_ok=True)
     
-    # Setup logging
     log_to_console = args.log_console or not args.log_file
     logger = setup_logger(to_console=log_to_console, log_file=log_path)
     
@@ -221,11 +332,7 @@ def main():
         logger.error(f"Failed to load schema: {e}")
         sys.exit(1)
     
-    # Load prompt template
-    prompt_template = Path(prompt_path).read_text(encoding='utf-8')
-    logger.info(f"Loaded prompt template from: {prompt_path}")
-    
-    # Initialize entity matching processor with dataset config files
+    # Initialize entity matching processor
     try:
         processor = EntityMatchingProcessor(dataset['d1'], dataset['d2'], dataset['pairs'])
         logger.info("Entity matching processor initialized successfully")
@@ -235,13 +342,17 @@ def main():
         logger.error(f"Failed to initialize entity matching processor: {e}")
         sys.exit(1)
     
-    # Validate entities list for entity matching
-    expected_entities = ["entity_1", "entity_2"]
-    if not all(entity in entities_list for entity in expected_entities):
-        logger.warning(f"Expected entities {expected_entities}, got {entities_list}")
-        logger.info("Proceeding with provided entities list")
+    # Load prompt template
+    prompt_template = Path(prompt_path).read_text(encoding='utf-8')
+    logger.info(f"Loaded prompt template from: {prompt_path}")
     
-    print(f"HF_TOKEN {HF_TOKEN}")
+    # Determine processing mode
+    pairs_per_prompt = args.pairs_per_prompt
+    if pairs_per_prompt > 1:
+        logger.info(f"Multi-pair mode: processing {pairs_per_prompt} pairs per prompt")
+    else:
+        logger.info("Single-pair mode: processing 1 pair per prompt")
+    
     # Initialize model
     logger.info(f"Loading Hugging Face model: {args.hf_model}")
     llm = HuggingFaceLLM(
@@ -249,11 +360,10 @@ def main():
         temperature=temperature,
         max_tokens=max_tokens,
         hf_token=HF_TOKEN
-
     )
     logger.info("Model ready.")
     
-    # Setup partial save path if requested
+    # Setup partial save path
     partial_save_path = None
     if args.partial_save and args.save:
         partial_save_path = Path(args.save)
@@ -263,13 +373,22 @@ def main():
         logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
     
     # Process entity pairs
-    results_df = process_entity_pairs(
-        llm, processor, entities_list, prompt_template, schema_class, logger,
-        start_index=args.start_index,
-        count=args.count,
-        partial_save_interval=args.partial_save if args.save else None,
-        partial_save_path=partial_save_path
-    )
+    if pairs_per_prompt > 1:
+        results_df = process_entity_pairs_multi(
+            llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger,
+            start_index=args.start_index,
+            count=args.count,
+            partial_save_interval=args.partial_save if args.save else None,
+            partial_save_path=partial_save_path
+        )
+    else:
+        results_df = process_entity_pairs_single(
+            llm, processor, entities_list, prompt_template, schema_class, logger,
+            start_index=args.start_index,
+            count=args.count,
+            partial_save_interval=args.partial_save if args.save else None,
+            partial_save_path=partial_save_path
+        )
     
     # Print summary
     successful = results_df['success'].sum()
@@ -280,7 +399,7 @@ def main():
     print(f"Successful: {successful}")
     print(f"Failed: {total - successful}")
     
-    # Save results if requested
+    # Save results
     if args.save:
         save_path = Path(args.save)
         save_path.mkdir(parents=True, exist_ok=True)
@@ -290,14 +409,12 @@ def main():
         logger.info(f"Results saved to: {results_file}")
         print(f"Results saved to: {results_file}")
         
-        # Save successful results only
         successful_results = results_df[results_df['success'] == True]
         if len(successful_results) > 0:
             successful_file = save_path / "successful_results.csv"
             successful_results.to_csv(successful_file, index=False)
             logger.info(f"Successful results saved to: {successful_file}")
         
-        # Delete partial save file if it exists
         partial_file = save_path / "partial_results.csv"
         if partial_file.exists():
             try:
@@ -310,32 +427,24 @@ def main():
     # Display sample results
     if len(results_df) > 0:
         print(f"\nFirst few results:")
-        # Show the most important columns including LLM responses
-        display_columns = ['pair_index', 'entity_1', 'entity_2', 'match', 'llm_response_raw', 'success']
-        # Use available columns if the expected ones don't exist
+        display_columns = ['pair_index', 'match', 'success']
+        if pairs_per_prompt > 1:
+            display_columns.insert(1, 'batch_num')
+        
         available_columns = [col for col in display_columns if col in results_df.columns]
         
-        if 'match' not in available_columns and 'match' in results_df.columns:
-            available_columns.append('match')
-        
-        if not available_columns:
-            available_columns = ['pair_index', 'entity1_formatted', 'entity2_formatted', 'success']
-            available_columns = [col for col in available_columns if col in results_df.columns]
-        
         if available_columns:
-            print(results_df[available_columns].head().to_string())
+            print(results_df[available_columns].head(10).to_string())
         else:
-            print(results_df.head())
+            print(results_df.head(10))
         
-        # Also show a summary of LLM responses
         if 'match' in results_df.columns:
             match_summary = results_df['match'].value_counts()
-            print(f"\nLLM Response Summary:")
+            print(f"\nMatch Summary:")
             print(f"Matches (1): {match_summary.get(1, 0)}")
             print(f"No matches (0): {match_summary.get(0, 0)}")
         
-        # Show columns available in results
-        print(f"\nAll available columns in results: {list(results_df.columns)}")
+        print(f"\nAll available columns: {list(results_df.columns)}")
 
 if __name__ == "__main__":
     main()
