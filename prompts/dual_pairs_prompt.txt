@@ -1,0 +1,6 @@
+"""For each pair, are the two entities the same?
+
+Pair 1: {{entity_1a}}, {{entity_1b}}
+Pair 2: {{entity_2a}}, {{entity_2b}}
+
+Please answer in json: {"pair_1_match": 1, "pair_2_match": 0} where 1 = match, 0 = no match."""
