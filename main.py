@@ -25,8 +25,7 @@ def parse_args():
     parser.add_argument("--save", type=str, help="Path to save results (optional).")
     parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
-    parser.add_argument("--count", type=int, help="Number of pairs to process (default: all from start-index).")
-    parser.add_argument("-p","--pairs-per-prompt", type=int, default=1, help="Number of pairs to process in a single prompt (default: 1).")
+    parser.add_argument("--count", type=int, help="Number of pairs to procesas (default: all from start-index).")
     return parser.parse_args()
 
 
@@ -347,7 +346,7 @@ def main():
     logger.info(f"Loaded prompt template from: {prompt_path}")
     
     # Determine processing mode
-    pairs_per_prompt = args.pairs_per_prompt
+    pairs_per_prompt = task_config.get("pairs_per_prompt",None)
     if pairs_per_prompt > 1:
         logger.info(f"Multi-pair mode: processing {pairs_per_prompt} pairs per prompt")
     else:

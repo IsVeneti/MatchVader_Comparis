@@ -98,18 +98,20 @@ Defines the tasks for entity matching, including prompts, schemas, and LLM param
 **Example:**
 ```yaml
 Pairs:
-  schema: "schemas/matching_schema.py"
+  schema: "src.schemas.pairs_schema.PairsSchema"
   entities: ["entity_1", "entity_2"]
-  prompt: "prompts/entity_matching_prompt.txt"
-  temperature: 0.5
-  max_tokens: 256
+  prompt: "prompts/pairs_prompt.txt"
+  max_tokens: 200
+  temperature: 0.7
+  pairs_per_prompt: 1
 
-DetailedMatching:
-  schema: "schemas/detailed_matching_schema.py"
-  entities: ["entity_1", "entity_2"]
-  prompt: "prompts/detailed_matching_prompt.txt"
-  temperature: 0.3
-  max_tokens: 512
+DualPairs:
+  schema: "src.schemas.dual_pairs_schema.DualPairsSchema"
+  entities: ["entity_1a", "entity_1a, entity_2a", "entity_2b"]
+  prompt: "prompts/dual_pairs_prompt.txt"
+  max_tokens: 300
+  temperature: 0.6
+  pairs_per_prompt: 2
 ```
 
 **Fields:**
