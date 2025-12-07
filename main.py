@@ -1,10 +1,12 @@
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 import yaml
 import pandas as pd
 from dotenv import load_dotenv
+from datetime import datetime
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
@@ -30,6 +32,7 @@ def parse_args():
 
 # TODO: Add a file in output with prompt, task_config, hf-model, dataset_config used for reproducibility
 
+
 def load_dataset_config(dataset_config_path, dataset_name, logger):
     """Load dataset configuration from YAML file."""
     try:
@@ -52,6 +55,68 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
     except Exception as e:
         logger.error(f"Failed to load dataset config: {e}")
         raise
+
+
+def save_run_metadata(save_path, args, task_config, dataset_config, prompt_template, logger, 
+                      start_time=None, finish_time=None, duration_minutes=None):
+    """
+    Save all run configuration for reproducibility.
+    
+    Args:
+        save_path: Path object where results are saved
+        args: Parsed command line arguments
+        task_config: Task configuration dict from YAML
+        dataset_config: Dataset configuration dict from YAML
+        prompt_template: The actual prompt template text
+        logger: Logger instance
+        start_time: Optional datetime when processing started
+        finish_time: Optional datetime when processing finished
+        duration_minutes: Optional duration in minutes
+    """
+    metadata = {
+        "run_info": {
+            "started_at": start_time.isoformat() if start_time else None,
+            "finished_at": finish_time.isoformat() if finish_time else None,
+            "duration_minutes": duration_minutes,
+            "created_at": datetime.now().isoformat()
+        },
+        "model": {
+            "hf_model": args.hf_model,
+            "temperature": task_config.get("temperature", 0.5),
+            "max_tokens": task_config.get("max_tokens", 256)
+        },
+        "task": {
+            "name": args.task,
+            "config": task_config,
+            "prompt_template": prompt_template
+        },
+        "dataset": {
+            "name": args.dataset,
+            "config": dataset_config
+        },
+        "processing": {
+            "start_index": args.start_index,
+            "count": args.count,
+            "pairs_per_prompt": task_config.get("pairs_per_prompt", 1)
+        },
+        "command_line_args": vars(args)
+    }
+    
+    # Save as JSON
+    metadata_file = save_path / "metadata.json"
+    with open(metadata_file, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"Metadata saved to: {metadata_file}")
+    
+    # Also save as YAML for easier reading
+    metadata_yaml = save_path / "metadata.yaml"
+    with open(metadata_yaml, 'w', encoding='utf-8') as f:
+        yaml.dump(metadata, f, default_flow_style=False, allow_unicode=True)
+    
+    logger.info(f"Metadata (YAML) saved to: {metadata_yaml}")
+    
+    return metadata_file
 
 
 def _replace_prompt_entities(prompt_template, entity_values):  
@@ -298,6 +363,9 @@ def main():
     log_to_console = args.log_console or not args.log_file
     logger = setup_logger(to_console=log_to_console, log_file=log_path)
     
+    start_time = datetime.now()
+    logger.info(f"Run started at: {start_time.isoformat()}")
+
     # Load dataset config
     dataset = load_dataset_config(DATASET_CONFIG_PATH, args.dataset, logger)
     logger.info(f"Dataset files:")
@@ -368,6 +436,18 @@ def main():
     if args.partial_save and args.save:
         partial_save_path = Path(args.save)
         partial_save_path.mkdir(parents=True, exist_ok=True)
+
+        # Save initial metadata (without finish time)
+        save_run_metadata(
+            save_path=partial_save_path,
+            args=args,
+            task_config=task_config,
+            dataset_config=dataset,
+            prompt_template=prompt_template,
+            logger=logger,
+            start_time=start_time
+        )
+
         logger.info(f"Partial save enabled: saving every {args.partial_save} pairs to {partial_save_path}")
     elif args.partial_save and not args.save:
         logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
@@ -399,10 +479,30 @@ def main():
     print(f"Successful: {successful}")
     print(f"Failed: {total - successful}")
     
+    # After processing completes, record finish time
+    finish_time = datetime.now()
+    duration = (finish_time - start_time).total_seconds() / 60
+    logger.info(f"Run finished at: {finish_time.isoformat()}")
+    logger.info(f"Total duration: {duration:.2f} seconds ({duration/60:.2f} minutes)")
+    
+
     # Save results
     if args.save:
         save_path = Path(args.save)
         save_path.mkdir(parents=True, exist_ok=True)
+
+        # Save final metadata with timing info
+        save_run_metadata(
+            save_path=save_path,
+            args=args,
+            task_config=task_config,
+            dataset_config=dataset,
+            prompt_template=prompt_template,
+            logger=logger,
+            start_time=start_time,
+            finish_time=finish_time,
+            duration_minutes=duration
+        )
         
         results_file = save_path / "results.csv"
         results_df.to_csv(results_file, index=False)
