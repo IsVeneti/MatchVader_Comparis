@@ -3,28 +3,26 @@ import csv
 import pandas as pd
 
 
-def load_csv_with_separator_detection(csv_path,skiprows=None,header=0):
+def load_csv_with_separator_detection(csv_path, skiprows=None, header=0):
     """
     Load CSV with automatic separator detection using csv.Sniffer.
     
     Args:
         csv_path (str): Path to CSV file
-        separator (str, optional): Separator to use. If None, will auto-detect.
+        skiprows: Rows to skip (passed to pd.read_csv)
+        header: Row number to use as column names (after skipping rows)
     
     Returns:
         pd.DataFrame: Loaded dataframe
     """
-    # Use provided separator or detect it
+    # Detect separator
     with open(csv_path, 'r') as f:
-        sample = f.read(4096)  # Read first 4KB for detection
+        sample = f.read(4096)
         sniffer = csv.Sniffer()
         separator = sniffer.sniff(sample).delimiter
     
-    # Load the CSV
-    if skiprows is not None:
-        df = pd.read_csv(csv_path, sep=separator,header=header)
-    else:
-        df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows,header=header)
+    # Load - pandas handles skiprows and header correctly
+    df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows, header=header)
     
     return df
 
