@@ -1,9 +1,10 @@
 import os
 import pandas as pd
 
+from src.evaluator.data_manipulation import load_csv_with_separator_detection
+
 def get_or_create_id_pairs(pairs_csv, data1_csv, data2_csv,
                            output_csv='d1_pairs_with_ids.csv',
-                           data_sep='|', pairs_sep=',',
                            force_recreate=False):
     """
     Get ID-based pairs - either load existing file or create it.
@@ -13,7 +14,6 @@ def get_or_create_id_pairs(pairs_csv, data1_csv, data2_csv,
         data1_csv: First dataset with ID column
         data2_csv: Second dataset with ID column
         output_csv: Where to save/load the ID-based pairs
-        data_sep: Separator for data files
         pairs_sep: Separator for pairs file
         force_recreate: If True, recreate even if file exists
     
@@ -23,15 +23,15 @@ def get_or_create_id_pairs(pairs_csv, data1_csv, data2_csv,
     # Check if already exists
     if os.path.exists(output_csv) and not force_recreate:
         print(f"✓ Loading existing ID-based pairs from '{output_csv}'")
-        return pd.read_csv(output_csv)
+        return load_csv_with_separator_detection(output_csv)
     
     # Need to create it
     print(f"→ Converting pairs to IDs (this may take a moment)...")
     
     # Load files
-    pairs_df = pd.read_csv(pairs_csv, sep=pairs_sep, header=None, skiprows=1)
-    data1_df = pd.read_csv(data1_csv, sep=data_sep)
-    data2_df = pd.read_csv(data2_csv, sep=data_sep)
+    pairs_df = load_csv_with_separator_detection(pairs_csv, header=None, skiprows=1)
+    data1_df = load_csv_with_separator_detection(data1_csv)
+    data2_df = load_csv_with_separator_detection(data2_csv)
     
     # Get indices from pairs
     indices1 = pairs_df.iloc[:, 0]
@@ -57,12 +57,12 @@ def get_or_create_id_pairs(pairs_csv, data1_csv, data2_csv,
 if __name__ == "__main__":
     # === ONE-TIME CONVERSION ===
     print(os.getcwd())
-    output_csv = 'data/d1_data/d1_pairs_with_ids.csv'
+    output_csv = 'data/d2_data/d2_pairs_with_ids.csv'
 
     pairs_with_ids = get_or_create_id_pairs(
-        'data/d1_data/d1_pairs.csv',
-        'data/d1_data/rest1clean.csv',
-        'data/d1_data/rest2clean.csv',
+        'data/d2_data/d2_pairs.csv',
+        'data/d2_data/abtclean.csv',
+        'data/d2_data/buyclean.csv',
         output_csv=output_csv
     )
     # Save for next time
