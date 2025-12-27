@@ -3,7 +3,7 @@ import csv
 import pandas as pd
 
 
-def load_csv_with_separator_detection(csv_path):
+def load_csv_with_separator_detection(csv_path,skiprows=None,header=0):
     """
     Load CSV with automatic separator detection using csv.Sniffer.
     
@@ -21,7 +21,10 @@ def load_csv_with_separator_detection(csv_path):
         separator = sniffer.sniff(sample).delimiter
     
     # Load the CSV
-    df = pd.read_csv(csv_path, sep=separator)
+    if skiprows is not None:
+        df = pd.read_csv(csv_path, sep=separator,header=header)
+    else:
+        df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows,header=header)
     
     return df
 

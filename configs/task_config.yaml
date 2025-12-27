@@ -2,8 +2,8 @@ Pairs:
   schema: "src.schemas.pairs_schema.PairsSchema"
   entities: ["entity_1", "entity_2"]
   prompt: "prompts/pairs_prompt.txt"
-  max_tokens: 200
-  temperature: 0.7
+  max_tokens: 300
+  temperature: 0.6
   pairs_per_prompt: 1
 
 DualPairs:
@@ -16,5 +16,5 @@ DualPairs:
 
 DummyTask:
     schema: "src.schemas.dummy_schema.DummySchema"
-    temperature: 0.7
+    temperature: 0.6
     max_tokens: 100
