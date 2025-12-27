@@ -11,3 +11,52 @@ dataset_2:
   gt: "data/d2_data/d2_gtclean.csv"
   pairs: "data/d2_data/d2_pairs.csv"
   pairs_with_ids: "data/d2_data/d2_pairs_with_ids.csv"
+
+dataset_3:
+  d1: "data/d3_data/amazonclean.csv"
+  d2: "data/d3_data/gpclean.csv"
+  gt: "data/d3_data/gtclean.csv"
+  pairs: "data/d3_data/d3_pairs.csv"
+  pairs_with_ids: "data/d3_data/d3_pairs_with_ids.csv"
+
+dataset_4:
+  d1: "data/d4_data/dblpclean.csv"
+  d2: "data/d4_data/acmclean.csv"
+  gt: "data/d4_data/gtclean.csv"
+  pairs: "data/d4_data/d4_pairs.csv"
+  pairs_with_ids: "data/d4_data/d4_pairs_with_ids.csv"
+
+dataset_5:
+  d1: "data/d5_data/imdbclean.csv"
+  d2: "data/d5_data/tmdbclean.csv"
+  gt: "data/d5_data/gtclean.csv"
+  pairs: "data/d5_data/d5_pairs.csv"
+  pairs_with_ids: "data/d5_data/d5_pairs_with_ids.csv"
+
+dataset_6:
+  d1: "data/d6_data/imdbclean.csv"
+  d2: "data/d6_data/tvdbclean.csv"
+  gt: "data/d6_data/gtclean.csv"
+  pairs: "data/d6_data/d6_pairs.csv"
+  pairs_with_ids: "data/d6_data/d6_pairs_with_ids.csv"
+
+dataset_7:
+  d1: "data/d7_data/tmdbclean.csv"
+  d2: "data/d7_data/tvdbclean.csv"
+  gt: "data/d7_data/gtclean.csv"
+  pairs: "data/d7_data/d7_pairs.csv"
+  pairs_with_ids: "data/d7_data/d7_pairs_with_ids.csv"
+
+dataset_8:
+  d1: "data/d8_data/walmartclean.csv"
+  d2: "data/d8_data/amazonclean.csv"
+  gt: "data/d8_data/gtclean.csv"
+  pairs: "data/d8_data/d8_pairs.csv"
+  pairs_with_ids: "data/d8_data/d8_pairs_with_ids.csv"
+
+dataset_9:
+  d1: "data/d9_data/dblpclean.csv"
+  d2: "data/d9_data/scholarclean.csv"
+  gt: "data/d9_data/gtclean.csv"
+  pairs: "data/d9_data/d9_pairs.csv"
+  pairs_with_ids: "data/d9_data/d9_pairs_with_ids.csv"

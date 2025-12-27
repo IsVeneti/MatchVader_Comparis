@@ -1,6 +1,8 @@
 import pandas as pd
 import json
 
+from src.evaluator.data_manipulation import load_csv_with_separator_detection
+
 class EntityMatchingProcessor:
     """
     A class to process entity matching data from entity datasets
@@ -26,11 +28,11 @@ class EntityMatchingProcessor:
     def _load_data(self):
         """Load and parse the CSV files."""
         # Load datasets with pipe delimiter
-        self.dataset1_df = pd.read_csv(self.dataset1_path, delimiter='|')
-        self.dataset2_df = pd.read_csv(self.dataset2_path, delimiter='|')
+        self.dataset1_df = load_csv_with_separator_detection(self.dataset1_path)
+        self.dataset2_df = load_csv_with_separator_detection(self.dataset2_path)
         
         # Load pairs dataset
-        self.pairs_df = pd.read_csv(self.pairs_path)
+        self.pairs_df = load_csv_with_separator_detection(self.pairs_path)
         
         # Get column names dynamically from pairs file
         self.col1_name, self.col2_name = self.pairs_df.columns[0], self.pairs_df.columns[1]
