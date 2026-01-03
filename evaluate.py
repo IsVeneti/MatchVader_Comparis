@@ -3,7 +3,7 @@ import os
 from llama_cpp import Path
 import yaml
 from src.data_processing.pairs_to_ids import get_or_create_id_pairs
-from src.evaluator.data_manipulation import load_csv_with_separator_detection, load_ground_truth, merge_dataframes, merge_response_pairs
+from src.evaluator.data_manipulation import load_ground_truth, merge_dataframes, merge_response_pairs, merge_response_pairs_partial
 from src.evaluator.evaluate import evaluate_results, save_results_as_json
 import pandas as pd
 
@@ -15,7 +15,8 @@ parser = argparse.ArgumentParser(description='Evaluate candidate pairs against g
 parser.add_argument('--dataset', '-d',choices=[f'dataset_{i}' for i in range(1, 10)], required=True, help='Which dataset to use from config')
 parser.add_argument('--response_csv', '-r', help='LLM response CSV file',  required=True)
 parser.add_argument('--join', '-j', choices=['inner', 'outer', 'left', 'right'], default='inner', help='Join type for comparison (default: inner)')
-
+parser.add_argument('--partial', '-p', action='store_true', 
+                   help='Handle partial runs (merge by pair_index instead of position)')
 
 def run_evaluation(pairs_with_ids, gt_csv, join_type='inner'):
     """Run complete evaluation pipeline."""
@@ -49,7 +50,10 @@ if __name__ == '__main__':
     # pairs_from_response = filter_csv_columns(args.response_csv, columns=['id1', 'id2', 'match'])
 
     # Process and evaluate
-    pairs_from_response = merge_response_pairs(args.response_csv, pairs_path)
+    if args.partial:
+        pairs_from_response = merge_response_pairs_partial(args.response_csv, pairs_path)
+    else:
+        pairs_from_response = merge_response_pairs(args.response_csv, pairs_path)
     ground_truth_df = load_ground_truth(ground_truth_path)
     
     metrics = run_evaluation(pairs_from_response, ground_truth_df, join_type=args.join)
