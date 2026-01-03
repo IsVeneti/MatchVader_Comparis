@@ -56,6 +56,59 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         logger.error(f"Failed to load dataset config: {e}")
         raise
 
+def create_result(pair_data, col1_name, col2_name, success=True, prompt=None, 
+                  response=None, error=None, **extra_fields):
+    """
+    Create a standardized result dictionary for entity matching.
+    
+    Args:
+        pair_data: Dictionary with pair information (can be None for errors)
+        col1_name: Name of first column
+        col2_name: Name of second column
+        success: Whether processing succeeded
+        prompt: The prompt used (optional)
+        response: The LLM response object (optional)
+        error: Error message if failed (optional)
+        **extra_fields: Additional fields to include in result
+    
+    Returns:
+        Dictionary with standardized result structure
+    """
+    # Base result structure
+    result = {
+        "success": success,
+    }
+    
+    # Add pair data if available
+    if pair_data:
+        result.update({
+            "row_id": pair_data['pair_index'] + 1,
+            "pair_index": pair_data['pair_index'],
+            f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+            f"{col2_name}_index": pair_data[f'{col2_name}_index'],
+            "entity1": str(pair_data['entity1_raw']),
+            "entity2": str(pair_data['entity2_raw']),
+        })
+    
+    # Add prompt if provided
+    if prompt is not None:
+        result["prompt"] = prompt
+    
+    # Add response if provided
+    if response is not None:
+        result["response"] = str(response)
+        # Extract individual fields from response if it's a Pydantic model
+        if hasattr(response, 'model_dump'):
+            result.update(response.model_dump())
+    
+    # Add error if provided
+    if error is not None:
+        result["error"] = str(error)
+    
+    # Add any extra fields
+    result.update(extra_fields)
+    
+    return result
 
 def save_run_metadata(save_path, args, task_config, dataset_config, prompt_template, logger, 
                       start_time=None, finish_time=None, duration_minutes=None):
@@ -164,6 +217,9 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
     for pair_idx in range(start_index, end_index):
         logger.info(f"Processing pair {pair_idx + 1}/{total_pairs} (batch: {pair_idx - start_index + 1}/{count})")
         
+        pair_data = None
+        prompt = None
+        
         try:
             # Get the pair data
             pair_data = processor.get_pair_by_index(pair_idx)
@@ -184,22 +240,15 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
             
             response = llm.generate_structured(prompt, schema_class)
 
-            # Create result row with dynamic column names
-            result = {
-                "row_id": pair_idx + 1,
-                "pair_index": pair_data['pair_index'],
-                f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                "entity1_raw": str(pair_data['entity1_raw']),
-                "entity2_raw": str(pair_data['entity2_raw']),
-                "prompt": prompt,
-                "response": str(response),
-                "success": True
-            }
-            
-            # Add individual fields from the response
-            if hasattr(response, 'model_dump'):
-                result.update(response.model_dump())
+            # Use standardized result creation
+            result = create_result(
+                pair_data=pair_data,
+                col1_name=col1_name,
+                col2_name=col2_name,
+                success=True,
+                prompt=prompt,
+                response=response
+            )
             
             results.append(result)
             logger.info(f"Pair {pair_idx + 1} processed successfully")
@@ -207,27 +256,28 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
         except Exception as e:
             logger.error(f"Failed to process pair {pair_idx + 1}: {e}")
 
-            # Try to get pair data for error logging
-            try:
-                pair_data = processor.get_pair_by_index(pair_idx)
-                result = {
-                    "row_id": pair_idx + 1,
-                    "pair_index": pair_data['pair_index'],
-                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                    "entity1_raw": str(pair_data['entity1_raw']),
-                    "entity2_raw": str(pair_data['entity2_raw']),
-                    "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
-                    "error": str(e),
-                    "success": False
-                }
-            except:
-                result = {
-                    "row_id": pair_idx + 1,
-                    "pair_index": pair_idx,
-                    "error": str(e),
-                    "success": False
-                }
+            # Create error result - handle case where pair_data might be None
+            if pair_data is None:
+                # Couldn't even load pair data - create minimal error result
+                result = create_result(
+                    pair_data=None,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=False,
+                    error=e,
+                    row_id=pair_idx + 1,
+                    pair_index=pair_idx
+                )
+            else:
+                # Had pair data but processing failed
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=False,
+                    prompt=prompt if prompt else "Error generating prompt",
+                    error=e
+                )
             
             results.append(result)
         
@@ -260,6 +310,8 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
         batch_num += 1
         
         logger.info(f"Processing batch {batch_num} with pairs {batch_start + 1}-{batch_end} ({actual_pairs_in_batch} pairs)")
+        
+        prompt = None
         
         try:
             # Collect all pairs in this batch
@@ -295,20 +347,17 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
                 match_field = f"pair_{pair_num}_match"
                 match_value = response_dict.get(match_field, None)
                 
-                result = {
-                    "row_id": pair_data['pair_index'] + 1,
-                    "pair_index": pair_data['pair_index'],
-                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                    "entity1_raw": str(pair_data['entity1_raw']),
-                    "entity2_raw": str(pair_data['entity2_raw']),
-                    "batch_num": batch_num,
-                    "pairs_in_batch": actual_pairs_in_batch,
-                    "prompt": prompt,
-                    "response": str(response),
-                    "match": match_value,
-                    "success": True
-                }
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=True,
+                    prompt=prompt,
+                    response=response,
+                    batch_num=batch_num,
+                    pairs_in_batch=actual_pairs_in_batch,
+                    match=match_value
+                )
                 
                 results.append(result)
                 logger.info(f"Pair {pair_data['pair_index'] + 1} processed successfully (match: {match_value})")
@@ -318,29 +367,38 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             
             # Create error results for all pairs in this batch
             for pair_idx in range(batch_start, batch_end):
+                pair_data = None
                 try:
                     pair_data = processor.get_pair_by_index(pair_idx)
-                    result = {
-                        "row_id": pair_data['pair_index'] + 1,
-                        "pair_index": pair_data['pair_index'],
-                        f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                        f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                        "entity1_raw": str(pair_data['entity1_raw']),
-                        "entity2_raw": str(pair_data['entity2_raw']),
-                        "batch_num": batch_num,
-                        "pairs_in_batch": actual_pairs_in_batch,
-                        "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
-                        "error": str(e),
-                        "success": False
-                    }
-                except:
-                    result = {
-                        "row_id": pair_idx + 1,
-                        "pair_index": pair_idx,
-                        "batch_num": batch_num,
-                        "error": str(e),
-                        "success": False
-                    }
+                except Exception:
+                    # Couldn't load this pair's data
+                    pass
+                
+                if pair_data is None:
+                    # Minimal error result when pair data unavailable
+                    result = create_result(
+                        pair_data=None,
+                        col1_name=col1_name,
+                        col2_name=col2_name,
+                        success=False,
+                        error=e,
+                        row_id=pair_idx + 1,
+                        pair_index=pair_idx,
+                        batch_num=batch_num,
+                        pairs_in_batch=actual_pairs_in_batch
+                    )
+                else:
+                    # Full error result with pair data
+                    result = create_result(
+                        pair_data=pair_data,
+                        col1_name=col1_name,
+                        col2_name=col2_name,
+                        success=False,
+                        prompt=prompt if prompt else "Error generating prompt",
+                        error=e,
+                        batch_num=batch_num,
+                        pairs_in_batch=actual_pairs_in_batch
+                    )
                 
                 results.append(result)
         
@@ -348,6 +406,217 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
         pairs_processed = batch_end - start_index
         if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
             _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
+    
+    return pd.DataFrame(results)
+
+
+def load_candidate_groups(pairs_df, target_side, logger):
+    """
+    Group candidate pairs by target entity.
+    
+    Args:
+        pairs_df: DataFrame with candidate pairs (two columns)
+        target_side: 'd1' or 'd2' - which side contains target entities
+        logger: Logger instance
+    
+    Returns:
+        Dict mapping target_id -> list of candidate_ids, plus column names
+    """
+    col_names = pairs_df.columns.tolist()
+    
+    if target_side == 'd2':
+        # d2 is target (second column), d1 entities are candidates (first column)
+        target_col = col_names[1]
+        candidate_col = col_names[0]
+    else:  # d1 is target
+        # d1 is target (first column), d2 entities are candidates (second column)
+        target_col = col_names[0]
+        candidate_col = col_names[1]
+    
+    logger.info(f"Target column: {target_col}, Candidate column: {candidate_col}")
+    
+    # Group by target, collect candidates
+    groups = {}
+    for _, row in pairs_df.iterrows():
+        target_id = row[target_col]
+        candidate_id = row[candidate_col]
+        
+        if target_id not in groups:
+            groups[target_id] = []
+        groups[target_id].append(candidate_id)
+    
+    logger.info(f"Found {len(groups)} target entities with candidates")
+    return groups, target_col, candidate_col
+
+
+def process_candidate_selection(llm, processor, prompt_template, schema_class, task_config, logger,
+                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+    """
+    Process candidate selection: for each target entity, find the matching candidate.
+    """
+    results = []
+    target_side = task_config.get("target_side", "d2")
+    
+    # Load and group candidates
+    candidate_groups, target_col, candidate_col = load_candidate_groups(
+        processor.pairs_df, target_side, logger
+    )
+    
+    # Get ordered list of unique targets
+    target_ids = list(candidate_groups.keys())
+    total_targets = len(target_ids)
+    
+    if count is None:
+        count = total_targets - start_index
+    end_index = min(start_index + count, total_targets)
+    
+    logger.info(f"Processing targets {start_index + 1} to {end_index} (total: {total_targets})")
+    
+    # Determine which dataframe is target and which is candidates
+    # dataset1_df corresponds to col1_name, dataset2_df corresponds to col2_name
+    if target_side == 'd2':
+        target_df = processor.dataset2_df
+        candidate_df = processor.dataset1_df
+        col1_name = processor.col1_name  # candidates
+        col2_name = processor.col2_name  # targets
+    else:
+        target_df = processor.dataset1_df
+        candidate_df = processor.dataset2_df
+        col1_name = processor.col1_name  # targets
+        col2_name = processor.col2_name  # candidates
+    
+    pairs_processed = 0
+    
+    for target_idx in range(start_index, end_index):
+        target_id = target_ids[target_idx]
+        candidate_ids = candidate_groups[target_id]
+        
+        logger.info(f"Processing target {target_idx + 1}/{total_targets}: ID={target_id} with {len(candidate_ids)} candidates")
+        
+        prompt = None
+        
+        try:
+            # Get target entity data - using iloc since pairs file contains row indices
+            target_entity = target_df.iloc[target_id].to_dict()
+            target_entity_clean = {k: v for k, v in target_entity.items() if k.lower() != 'id'}
+            
+            # Get candidate entities data
+            candidates_data = []
+            for cand_id in candidate_ids:
+                cand_entity = candidate_df.iloc[cand_id].to_dict()
+                cand_entity_clean = {k: v for k, v in cand_entity.items() if k.lower() != 'id'}
+                candidates_data.append({
+                    'id': cand_id,
+                    'entity': cand_entity_clean
+                })
+            
+            if not candidates_data:
+                raise ValueError(f"No valid candidates found for target {target_id}")
+            
+            # Format candidates for prompt (1-indexed)
+            candidates_str = "\n".join([
+                f"{i+1}. {cand['entity']}" 
+                for i, cand in enumerate(candidates_data)
+            ])
+            
+            # Build prompt
+            entity_values = {
+                "target_entity": str(target_entity_clean),
+                "candidates": candidates_str
+            }
+            prompt = _replace_prompt_entities(prompt_template, entity_values)
+            
+            logger.debug(f"Generated prompt: {prompt[:400]}{'...' if len(prompt) > 400 else ''}")
+            
+            # Get LLM response
+            response = llm.generate_structured(prompt, schema_class)
+            selected_idx = response.selected_candidate  # 1-based, or 0 for no match
+            
+            logger.info(f"Target {target_id}: selected candidate index = {selected_idx}")
+            
+            # Create results for all candidate pairs
+            for i, cand_data in enumerate(candidates_data):
+                cand_id = cand_data['id']
+                is_match = 1 if (selected_idx == i + 1) else 0
+                
+                # Build pair_data-like structure for result creation
+                if target_side == 'd2':
+                    pair_data = {
+                        'pair_index': pairs_processed,
+                        f'{col1_name}_index': cand_id,
+                        f'{col2_name}_index': target_id,
+                        'entity1_raw': cand_data['entity'],
+                        'entity2_raw': target_entity_clean,
+                    }
+                else:
+                    pair_data = {
+                        'pair_index': pairs_processed,
+                        f'{col1_name}_index': target_id,
+                        f'{col2_name}_index': cand_id,
+                        'entity1_raw': target_entity_clean,
+                        'entity2_raw': cand_data['entity'],
+                    }
+                
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=True,
+                    prompt=prompt,
+                    response=response,
+                    target_id=target_id,
+                    candidate_id=cand_id,
+                    candidate_position=i + 1,
+                    total_candidates=len(candidates_data),
+                    selected_candidate=selected_idx,
+                    match=is_match
+                )
+                results.append(result)
+                pairs_processed += 1
+            
+            logger.info(f"Target {target_id} processed: {len(candidates_data)} pairs created")
+            
+        except Exception as e:
+            logger.error(f"Failed to process target {target_id}: {e}")
+            
+            # Create error results for all candidates of this target
+            for i, cand_id in enumerate(candidate_ids):
+                if target_side == 'd2':
+                    pair_data = {
+                        'pair_index': pairs_processed,
+                        f'{col1_name}_index': cand_id,
+                        f'{col2_name}_index': target_id,
+                        'entity1_raw': f"candidate_{cand_id}",
+                        'entity2_raw': f"target_{target_id}",
+                    }
+                else:
+                    pair_data = {
+                        'pair_index': pairs_processed,
+                        f'{col1_name}_index': target_id,
+                        f'{col2_name}_index': cand_id,
+                        'entity1_raw': f"target_{target_id}",
+                        'entity2_raw': f"candidate_{cand_id}",
+                    }
+                
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=False,
+                    prompt=prompt if prompt else "Error generating prompt",
+                    error=e,
+                    target_id=target_id,
+                    candidate_id=cand_id,
+                    candidate_position=i + 1,
+                    total_candidates=len(candidate_ids)
+                )
+                results.append(result)
+                pairs_processed += 1
+        
+        # Partial save check
+        if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
+            _save_partial_results(results, partial_save_path, pairs_processed, 
+                                  sum(len(candidate_groups[t]) for t in target_ids[start_index:end_index]), logger)
     
     return pd.DataFrame(results)
 
@@ -414,12 +683,10 @@ def main():
     prompt_template = Path(prompt_path).read_text(encoding='utf-8')
     logger.info(f"Loaded prompt template from: {prompt_path}")
     
-    # Determine processing mode
+    # Determine task type (processing mode)
+    task_type = task_config.get("task_type", "pairs")
     pairs_per_prompt = task_config.get("pairs_per_prompt",None)
-    if pairs_per_prompt > 1:
-        logger.info(f"Multi-pair mode: processing {pairs_per_prompt} pairs per prompt")
-    else:
-        logger.info("Single-pair mode: processing 1 pair per prompt")
+
     
     # Initialize model
     logger.info(f"Loading Hugging Face model: {args.hf_model}")
@@ -452,23 +719,36 @@ def main():
     elif args.partial_save and not args.save:
         logger.warning("--partial-save requires --save to be set. Partial saving disabled.")
     
-    # Process entity pairs
-    if pairs_per_prompt > 1:
-        results_df = process_entity_pairs_multi(
-            llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger,
+    
+    # Process based on task type
+    if task_type == "candidate_selection":
+        logger.info(f"Running candidate selection task (target_side: {task_config.get('target_side', 'd2')})")
+        results_df = process_candidate_selection(
+            llm, processor, prompt_template, schema_class, task_config, logger,
             start_index=args.start_index,
             count=args.count,
             partial_save_interval=args.partial_save if args.save else None,
             partial_save_path=partial_save_path
         )
     else:
-        results_df = process_entity_pairs_single(
-            llm, processor, entities_list, prompt_template, schema_class, logger,
-            start_index=args.start_index,
-            count=args.count,
-            partial_save_interval=args.partial_save if args.save else None,
-            partial_save_path=partial_save_path
-        )
+        # Original pair processing logic
+        pairs_per_prompt = task_config.get("pairs_per_prompt", 1)
+        if pairs_per_prompt > 1:
+            logger.info(f"Multi-pair mode: processing {pairs_per_prompt} pairs per prompt")
+            results_df = process_entity_pairs_multi(
+                llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger,
+                start_index=args.start_index, count=args.count,
+                partial_save_interval=args.partial_save if args.save else None,
+                partial_save_path=partial_save_path
+            )
+        else:
+            logger.info("Single-pair mode: processing 1 pair per prompt")
+            results_df = process_entity_pairs_single(
+                llm, processor, entities_list, prompt_template, schema_class, logger,
+                start_index=args.start_index, count=args.count,
+                partial_save_interval=args.partial_save if args.save else None,
+                partial_save_path=partial_save_path
+            )
     
     # Print summary
     successful = results_df['success'].sum()

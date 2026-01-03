@@ -18,3 +18,23 @@ DummyTask:
     schema: "src.schemas.dummy_schema.DummySchema"
     temperature: 0.6
     max_tokens: 100
+
+CandidateSelection_D2Target:
+  schema: "src.schemas.candidate_selection_schema.CandidateSelectionSchema"
+  entities: ["target_entity", "candidates"]
+  prompt: "prompts/candidate_selection_prompt.txt"
+  max_tokens: 500
+  temperature: 0.6
+  pairs_per_prompt: 1
+  task_type: "candidate_selection"
+  target_side: "d2"  # d2 is target, d1 entities are candidates
+
+CandidateSelection_D1Target:
+  schema: "src.schemas.candidate_selection_schema.CandidateSelectionSchema"
+  entities: ["target_entity", "candidates"]
+  prompt: "prompts/candidate_selection_prompt.txt"
+  max_tokens: 500
+  temperature: 0.6
+  pairs_per_prompt: 1
+  task_type: "candidate_selection"
+  target_side: "d1"  # d1 is target, d2 entities are candidates
