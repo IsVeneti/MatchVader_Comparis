@@ -56,6 +56,59 @@ def load_dataset_config(dataset_config_path, dataset_name, logger):
         logger.error(f"Failed to load dataset config: {e}")
         raise
 
+def create_result(pair_data, col1_name, col2_name, success=True, prompt=None, 
+                  response=None, error=None, **extra_fields):
+    """
+    Create a standardized result dictionary for entity matching.
+    
+    Args:
+        pair_data: Dictionary with pair information (can be None for errors)
+        col1_name: Name of first column
+        col2_name: Name of second column
+        success: Whether processing succeeded
+        prompt: The prompt used (optional)
+        response: The LLM response object (optional)
+        error: Error message if failed (optional)
+        **extra_fields: Additional fields to include in result
+    
+    Returns:
+        Dictionary with standardized result structure
+    """
+    # Base result structure
+    result = {
+        "success": success,
+    }
+    
+    # Add pair data if available
+    if pair_data:
+        result.update({
+            "row_id": pair_data['pair_index'] + 1,
+            "pair_index": pair_data['pair_index'],
+            f"{col1_name}_index": pair_data[f'{col1_name}_index'],
+            f"{col2_name}_index": pair_data[f'{col2_name}_index'],
+            "entity1": str(pair_data['entity1_raw']),
+            "entity2": str(pair_data['entity2_raw']),
+        })
+    
+    # Add prompt if provided
+    if prompt is not None:
+        result["prompt"] = prompt
+    
+    # Add response if provided
+    if response is not None:
+        result["response"] = str(response)
+        # Extract individual fields from response if it's a Pydantic model
+        if hasattr(response, 'model_dump'):
+            result.update(response.model_dump())
+    
+    # Add error if provided
+    if error is not None:
+        result["error"] = str(error)
+    
+    # Add any extra fields
+    result.update(extra_fields)
+    
+    return result
 
 def save_run_metadata(save_path, args, task_config, dataset_config, prompt_template, logger, 
                       start_time=None, finish_time=None, duration_minutes=None):
@@ -164,6 +217,9 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
     for pair_idx in range(start_index, end_index):
         logger.info(f"Processing pair {pair_idx + 1}/{total_pairs} (batch: {pair_idx - start_index + 1}/{count})")
         
+        pair_data = None
+        prompt = None
+        
         try:
             # Get the pair data
             pair_data = processor.get_pair_by_index(pair_idx)
@@ -184,22 +240,15 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
             
             response = llm.generate_structured(prompt, schema_class)
 
-            # Create result row with dynamic column names
-            result = {
-                "row_id": pair_idx + 1,
-                "pair_index": pair_data['pair_index'],
-                f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                "entity1_raw": str(pair_data['entity1_raw']),
-                "entity2_raw": str(pair_data['entity2_raw']),
-                "prompt": prompt,
-                "response": str(response),
-                "success": True
-            }
-            
-            # Add individual fields from the response
-            if hasattr(response, 'model_dump'):
-                result.update(response.model_dump())
+            # Use standardized result creation
+            result = create_result(
+                pair_data=pair_data,
+                col1_name=col1_name,
+                col2_name=col2_name,
+                success=True,
+                prompt=prompt,
+                response=response
+            )
             
             results.append(result)
             logger.info(f"Pair {pair_idx + 1} processed successfully")
@@ -207,27 +256,28 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
         except Exception as e:
             logger.error(f"Failed to process pair {pair_idx + 1}: {e}")
 
-            # Try to get pair data for error logging
-            try:
-                pair_data = processor.get_pair_by_index(pair_idx)
-                result = {
-                    "row_id": pair_idx + 1,
-                    "pair_index": pair_data['pair_index'],
-                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                    "entity1_raw": str(pair_data['entity1_raw']),
-                    "entity2_raw": str(pair_data['entity2_raw']),
-                    "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
-                    "error": str(e),
-                    "success": False
-                }
-            except:
-                result = {
-                    "row_id": pair_idx + 1,
-                    "pair_index": pair_idx,
-                    "error": str(e),
-                    "success": False
-                }
+            # Create error result - handle case where pair_data might be None
+            if pair_data is None:
+                # Couldn't even load pair data - create minimal error result
+                result = create_result(
+                    pair_data=None,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=False,
+                    error=e,
+                    row_id=pair_idx + 1,
+                    pair_index=pair_idx
+                )
+            else:
+                # Had pair data but processing failed
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=False,
+                    prompt=prompt if prompt else "Error generating prompt",
+                    error=e
+                )
             
             results.append(result)
         
@@ -260,6 +310,8 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
         batch_num += 1
         
         logger.info(f"Processing batch {batch_num} with pairs {batch_start + 1}-{batch_end} ({actual_pairs_in_batch} pairs)")
+        
+        prompt = None
         
         try:
             # Collect all pairs in this batch
@@ -295,20 +347,17 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
                 match_field = f"pair_{pair_num}_match"
                 match_value = response_dict.get(match_field, None)
                 
-                result = {
-                    "row_id": pair_data['pair_index'] + 1,
-                    "pair_index": pair_data['pair_index'],
-                    f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                    f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                    "entity1_raw": str(pair_data['entity1_raw']),
-                    "entity2_raw": str(pair_data['entity2_raw']),
-                    "batch_num": batch_num,
-                    "pairs_in_batch": actual_pairs_in_batch,
-                    "prompt": prompt,
-                    "response": str(response),
-                    "match": match_value,
-                    "success": True
-                }
+                result = create_result(
+                    pair_data=pair_data,
+                    col1_name=col1_name,
+                    col2_name=col2_name,
+                    success=True,
+                    prompt=prompt,
+                    response=response,
+                    batch_num=batch_num,
+                    pairs_in_batch=actual_pairs_in_batch,
+                    match=match_value
+                )
                 
                 results.append(result)
                 logger.info(f"Pair {pair_data['pair_index'] + 1} processed successfully (match: {match_value})")
@@ -318,29 +367,38 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             
             # Create error results for all pairs in this batch
             for pair_idx in range(batch_start, batch_end):
+                pair_data = None
                 try:
                     pair_data = processor.get_pair_by_index(pair_idx)
-                    result = {
-                        "row_id": pair_data['pair_index'] + 1,
-                        "pair_index": pair_data['pair_index'],
-                        f"{col1_name}_index": pair_data[f'{col1_name}_index'],
-                        f"{col2_name}_index": pair_data[f'{col2_name}_index'],
-                        "entity1_raw": str(pair_data['entity1_raw']),
-                        "entity2_raw": str(pair_data['entity2_raw']),
-                        "batch_num": batch_num,
-                        "pairs_in_batch": actual_pairs_in_batch,
-                        "prompt": prompt if 'prompt' in locals() else "Error generating prompt",
-                        "error": str(e),
-                        "success": False
-                    }
-                except:
-                    result = {
-                        "row_id": pair_idx + 1,
-                        "pair_index": pair_idx,
-                        "batch_num": batch_num,
-                        "error": str(e),
-                        "success": False
-                    }
+                except Exception:
+                    # Couldn't load this pair's data
+                    pass
+                
+                if pair_data is None:
+                    # Minimal error result when pair data unavailable
+                    result = create_result(
+                        pair_data=None,
+                        col1_name=col1_name,
+                        col2_name=col2_name,
+                        success=False,
+                        error=e,
+                        row_id=pair_idx + 1,
+                        pair_index=pair_idx,
+                        batch_num=batch_num,
+                        pairs_in_batch=actual_pairs_in_batch
+                    )
+                else:
+                    # Full error result with pair data
+                    result = create_result(
+                        pair_data=pair_data,
+                        col1_name=col1_name,
+                        col2_name=col2_name,
+                        success=False,
+                        prompt=prompt if prompt else "Error generating prompt",
+                        error=e,
+                        batch_num=batch_num,
+                        pairs_in_batch=actual_pairs_in_batch
+                    )
                 
                 results.append(result)
         
@@ -350,7 +408,6 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
     
     return pd.DataFrame(results)
-
 
 def main():
     args = parse_args()
