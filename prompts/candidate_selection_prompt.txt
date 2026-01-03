@@ -1,0 +1,13 @@
+You are an entity matching expert. Given one target entity and multiple candidate entities, determine which candidate (if any) refers to the same real-world entity as the target.
+
+Target Entity:
+[target_entity]
+
+Candidate Entities:
+[candidates]
+
+Instructions:
+- Compare the target entity with each candidate
+- Only ONE candidate can be the correct match (or none)
+- Return the candidate number (1-based index) of the match, or 0 if no match exists
+- Consider: exact matches, partial matches, abbreviations, different representations of the same entity

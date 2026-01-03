@@ -3,28 +3,26 @@ import csv
 import pandas as pd
 
 
-def load_csv_with_separator_detection(csv_path,skiprows=None,header=0):
+def load_csv_with_separator_detection(csv_path, skiprows=None, header=0):
     """
     Load CSV with automatic separator detection using csv.Sniffer.
     
     Args:
         csv_path (str): Path to CSV file
-        separator (str, optional): Separator to use. If None, will auto-detect.
+        skiprows: Rows to skip (passed to pd.read_csv)
+        header: Row number to use as column names (after skipping rows)
     
     Returns:
         pd.DataFrame: Loaded dataframe
     """
-    # Use provided separator or detect it
+    # Detect separator
     with open(csv_path, 'r') as f:
-        sample = f.read(4096)  # Read first 4KB for detection
+        sample = f.read(4096)
         sniffer = csv.Sniffer()
         separator = sniffer.sniff(sample).delimiter
     
-    # Load the CSV
-    if skiprows is not None:
-        df = pd.read_csv(csv_path, sep=separator,header=header)
-    else:
-        df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows,header=header)
+    # Load - pandas handles skiprows and header correctly
+    df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows, header=header)
     
     return df
 
@@ -134,6 +132,53 @@ def merge_response_pairs(llm_response_csv, entity_mappings_csv):
     
     return df2
 
+
+def merge_response_pairs_partial(llm_response_csv, entity_mappings_csv):
+    """
+    Merges LLM response CSV with entity mappings for partial runs.
+    Uses pair_index column to match rows.
+    
+    Parameters:
+        llm_response_csv (str): File path to the CSV containing LLM responses (partial results).
+        entity_mappings_csv (str): File path to the CSV containing all entity mappings.
+    
+    Returns:
+        pd.DataFrame: DataFrame with only the pairs that were evaluated, including match column.
+    """
+    # Read response CSV
+    df_response = load_csv_with_separator_detection(llm_response_csv)
+    
+    # Check if 'match' column exists
+    if 'match' not in df_response.columns:
+        raise ValueError("The 'match' column does not exist in llm_response_csv.")
+    
+    # Check if 'pair_index' column exists
+    if 'pair_index' not in df_response.columns:
+        raise ValueError("The 'pair_index' column does not exist in llm_response_csv. "
+                        "This function requires pair_index for partial run matching.")
+    
+    # Read entity mappings CSV
+    df_mappings = load_csv_with_separator_detection(entity_mappings_csv)
+    
+    # Create pair_index in mappings if it doesn't exist (0-based index)
+    if 'pair_index' not in df_mappings.columns:
+        df_mappings['pair_index'] = df_mappings.index
+    
+    # Merge on pair_index, keeping only evaluated pairs
+    df_merged = df_mappings.merge(
+        df_response[['pair_index', 'match']], 
+        on='pair_index', 
+        how='inner'
+    )
+    
+    print(f"Partial run merge: {len(df_response)} evaluated pairs matched "
+          f"with {len(df_merged)} rows from mappings (total mappings: {len(df_mappings)})")
+    
+    if len(df_merged) != len(df_response):
+        print(f"Warning: {len(df_response) - len(df_merged)} pairs from response "
+              f"could not be matched with entity mappings.")
+    
+    return df_merged
 
 def filter_csv_columns(input_csv, columns):
     """
