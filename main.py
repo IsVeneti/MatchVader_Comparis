@@ -624,14 +624,21 @@ def process_candidate_selection(llm, processor, prompt_template, schema_class, t
 def main():
     args = parse_args()
     
-    log_path = "./logs.log"
-    if args.log_file:
-        log_path = Path(args.log_file)
-        log_path.mkdir(parents=True, exist_ok=True)
-    
-    log_to_console = args.log_console or not args.log_file
-    logger = setup_logger(to_console=log_to_console, log_file=log_path)
-    
+    # Determine logging destinations based on what flags are provided
+    if args.log_file or args.log_console:
+        # At least one flag was explicitly specified
+        log_to_console = args.log_console
+        log_file_path = Path(args.log_file) if args.log_file else None
+        if log_file_path:
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        # No flags specified: default to both console and file
+        log_to_console = True
+        log_file_path = Path("./logs.log")
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    logger = setup_logger(to_console=log_to_console, log_file=log_file_path)
+        
     start_time = datetime.now()
     logger.info(f"Run started at: {start_time.isoformat()}")
 
