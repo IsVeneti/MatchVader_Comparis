@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 import pandas as pd
-from evaluate import evaluate_file
+from evaluate_main import evaluate_file
 
 def find_all_results(base_path, pattern="results.csv"):
     """Find all results.csv files in the directory structure."""
