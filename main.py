@@ -30,8 +30,6 @@ def parse_args():
     parser.add_argument("--count", type=int, help="Number of pairs to procesas (default: all from start-index).")
     return parser.parse_args()
 
-# TODO: Add a file in output with prompt, task_config, hf-model, dataset_config used for reproducibility
-
 
 def load_dataset_config(dataset_config_path, dataset_name, logger):
     """Load dataset configuration from YAML file."""
@@ -111,7 +109,8 @@ def create_result(pair_data, col1_name, col2_name, success=True, prompt=None,
     return result
 
 def save_run_metadata(save_path, args, task_config, dataset_config, prompt_template, logger, 
-                      start_time=None, finish_time=None, duration_minutes=None):
+                      start_time=None, finish_time=None, duration_minutes=None,
+                      token_stats=None):
     """
     Save all run configuration for reproducibility.
     
@@ -138,6 +137,7 @@ def save_run_metadata(save_path, args, task_config, dataset_config, prompt_templ
             "temperature": task_config.get("temperature", 0.5),
             "max_tokens": task_config.get("max_tokens", 256)
         },
+        "token_usage": token_stats if token_stats else {},
         "task": {
             "name": args.task,
             "config": task_config,
@@ -772,6 +772,9 @@ def main():
     logger.info(f"Run finished at: {finish_time.isoformat()}")
     logger.info(f"Total duration: {duration:.2f} seconds ({duration/60:.2f} minutes)")
     
+    # Get token statistics
+    token_stats = llm.get_token_stats()
+    logger.info(f"Token usage: {token_stats}")
 
     # Save results
     if args.save:
@@ -788,7 +791,8 @@ def main():
             logger=logger,
             start_time=start_time,
             finish_time=finish_time,
-            duration_minutes=duration
+            duration_minutes=duration,
+            token_stats=token_stats
         )
         
         results_file = save_path / "results.csv"
