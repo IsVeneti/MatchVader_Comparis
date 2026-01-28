@@ -1,6 +1,7 @@
 from typing import Type, TypeVar, Any
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from pydantic import BaseModel, ValidationError
+from dataclasses import dataclass, field
 import torch
 import json
 import re
@@ -9,6 +10,36 @@ T = TypeVar("T", bound=BaseModel)
 
 
 
+@dataclass
+class TokenUsageTracker:
+    """Track token usage across multiple LLM calls."""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    call_count: int = 0
+    
+    def add(self, prompt_tokens: int = 0, completion_tokens: int = 0):
+        self.prompt_tokens += prompt_tokens
+        self.completion_tokens += completion_tokens
+        self.total_tokens += prompt_tokens + completion_tokens
+        self.call_count += 1
+    
+    def reset(self):
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+        self.call_count = 0
+    
+    def get_stats(self) -> dict:
+        return {
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "llm_calls": self.call_count,
+            "avg_prompt_tokens": round(self.prompt_tokens / self.call_count, 2) if self.call_count else 0,
+            "avg_completion_tokens": round(self.completion_tokens / self.call_count, 2) if self.call_count else 0,
+            "avg_total_tokens": round(self.total_tokens / self.call_count, 2) if self.call_count else 0,
+        }
 class HuggingFaceLLM:
     """
     LLM wrapper using Hugging Face Transformers for causal language models (e.g., Mistral, LLaMA).
@@ -20,16 +51,16 @@ class HuggingFaceLLM:
         temperature: float = 0.2,
         max_tokens: int = 256,
         device: str | None = None,
-        hf_token: str | None = NotImplemented
+        hf_token: str | None = None
     ):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        
+        # Initialize token tracker
+        self.token_usage = TokenUsageTracker()
 
-         # Load optional token from environment
-        token_args = {"token": hf_token} if hf_token else {}
-
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name,token=hf_token)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
@@ -62,6 +93,8 @@ class HuggingFaceLLM:
         """
         prompt_text = self._apply_template(prompt)
         inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
+        
+        prompt_tokens = inputs["input_ids"].shape[-1]
 
         with torch.no_grad():
             output_ids = self.model.generate(
@@ -73,10 +106,22 @@ class HuggingFaceLLM:
                 pad_token_id=self.model.generation_config.pad_token_id,
             )
 
-        # Slice only the generated tokens (don’t try to split on the prompt string)
-        gen_ids = output_ids[0, inputs["input_ids"].shape[-1]:]
+        gen_ids = output_ids[0, prompt_tokens:]
+        completion_tokens = len(gen_ids)
+        
+        # Track token usage
+        self.token_usage.add(prompt_tokens, completion_tokens)
+        
         decoded = self.tokenizer.decode(gen_ids, skip_special_tokens=True)
         return decoded.strip()
+    
+    def get_token_stats(self) -> dict:
+        """Return token usage statistics."""
+        return self.token_usage.get_stats()
+    
+    def reset_token_stats(self):
+        """Reset token usage counters."""
+        self.token_usage.reset()
 
     @staticmethod
     def _first_json_blob(text: str) -> str:
