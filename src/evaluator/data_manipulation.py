@@ -16,13 +16,13 @@ def load_csv_with_separator_detection(csv_path, skiprows=None, header=0):
         pd.DataFrame: Loaded dataframe
     """
     # Detect separator
-    with open(csv_path, 'r') as f:
+    with open(csv_path, 'r', encoding='utf-8') as f:
         sample = f.read(4096)
         sniffer = csv.Sniffer()
         separator = sniffer.sniff(sample).delimiter
     
     # Load - pandas handles skiprows and header correctly
-    df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows, header=header)
+    df = pd.read_csv(csv_path, sep=separator, skiprows=skiprows, header=header, encoding='utf-8')
     
     return df
 
@@ -114,7 +114,7 @@ def merge_response_pairs(llm_response_csv, entity_mappings_csv):
         pd.DataFrame: DataFrame with match column added from llm_response_csv.
     """
     # Read csv1
-    df1 = load_csv_with_separator_detection(llm_response_csv)
+    df1 = pd.read_csv(llm_response_csv, encoding='utf-8')
     
     # Check if 'match' column exists
     if 'match' not in df1.columns:
@@ -146,7 +146,7 @@ def merge_response_pairs_partial(llm_response_csv, entity_mappings_csv):
         pd.DataFrame: DataFrame with only the pairs that were evaluated, including match column.
     """
     # Read response CSV
-    df_response = load_csv_with_separator_detection(llm_response_csv)
+    df_response = pd.read_csv(llm_response_csv, encoding='utf-8')
     
     # Check if 'match' column exists
     if 'match' not in df_response.columns:

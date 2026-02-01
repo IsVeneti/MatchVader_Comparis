@@ -184,7 +184,6 @@ class HuggingFaceLLM:
         """
         formatted = self._json_prompt(prompt, schema)
         raw_output = self.generate(formatted)
-        print("Raw model output:", raw_output)
 
         # Try to parse directly; if that fails, try to extract a JSON blob from the text.
         try:
