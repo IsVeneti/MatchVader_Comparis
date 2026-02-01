@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import yaml
 import pandas as pd
+import random
 from dotenv import load_dotenv
 from datetime import datetime
 from src.llm_connector.huggingface_llm import HuggingFaceLLM
@@ -288,9 +289,16 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
     return pd.DataFrame(results)
 
 
+
 def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger, 
-                               start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
-    """Process multiple entity pairs in a single prompt using static schema."""
+                               start_index=0, count=None, partial_save_interval=None, partial_save_path=None,
+                               shuffle=True, random_seed=42):
+    """Process multiple entity pairs in a single prompt using static schema.
+    
+    Args:
+        shuffle: If True, randomize pair order within batches to avoid sequential bias
+        random_seed: Seed for reproducibility (set to None for truly random)
+    """
     results = []
     
     total_pairs = len(processor.pairs_df)
@@ -302,14 +310,26 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
     col1_name = processor.col1_name
     col2_name = processor.col2_name
     
+    # Create list of indices to process
+    pair_indices = list(range(start_index, end_index))
+    
+    # Shuffle indices to avoid sequential bias
+    if shuffle:
+        if random_seed is not None:
+            random.seed(random_seed)
+        random.shuffle(pair_indices)
+        logger.info(f"Shuffled {len(pair_indices)} pair indices (seed={random_seed})")
+    
     # Process in batches
     batch_num = 0
-    for batch_start in range(start_index, end_index, pairs_per_prompt):
-        batch_end = min(batch_start + pairs_per_prompt, end_index)
-        actual_pairs_in_batch = batch_end - batch_start
+    pairs_processed = 0
+    
+    for batch_offset in range(0, len(pair_indices), pairs_per_prompt):
+        batch_indices = pair_indices[batch_offset:batch_offset + pairs_per_prompt]
+        actual_pairs_in_batch = len(batch_indices)
         batch_num += 1
         
-        logger.info(f"Processing batch {batch_num} with pairs {batch_start + 1}-{batch_end} ({actual_pairs_in_batch} pairs)")
+        logger.info(f"Processing batch {batch_num} with {actual_pairs_in_batch} pairs (indices: {batch_indices})")
         
         prompt = None
         
@@ -318,15 +338,15 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             batch_pairs = []
             entity_values = {}
             
-            for i, pair_idx in enumerate(range(batch_start, batch_end)):
+            for i, pair_idx in enumerate(batch_indices):
                 pair_data = processor.get_pair_by_index(pair_idx)
-                batch_pairs.append(pair_data)
+                batch_pairs.append((pair_idx, pair_data))  # Store original index with data
                 
                 # Create entity placeholders for this pair
                 entity1_clean = {k: v for k, v in pair_data['entity1_raw'].items() if k != 'id'}
                 entity2_clean = {k: v for k, v in pair_data['entity2_raw'].items() if k != 'id'}
                 
-                # Use indexed entity names: entity_1a, entity_1b for pair 1, entity_2a, entity_2b for pair 2, etc.
+                # Use indexed entity names: entity_1a, entity_1b for pair 1, etc.
                 pair_num = i + 1
                 entity_values[f"entity_{pair_num}a"] = str(entity1_clean)
                 entity_values[f"entity_{pair_num}b"] = str(entity2_clean)
@@ -342,7 +362,7 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             # Parse response and create individual results
             response_dict = response.model_dump() if hasattr(response, 'model_dump') else {}
             
-            for i, pair_data in enumerate(batch_pairs):
+            for i, (original_idx, pair_data) in enumerate(batch_pairs):
                 pair_num = i + 1
                 match_field = f"pair_{pair_num}_match"
                 match_value = response_dict.get(match_field, None)
@@ -355,27 +375,27 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
                     prompt=prompt,
                     response=response,
                     batch_num=batch_num,
+                    batch_position=pair_num,  # Position within the batch (1-indexed)
                     pairs_in_batch=actual_pairs_in_batch,
                     match=match_value
                 )
                 
                 results.append(result)
-                logger.info(f"Pair {pair_data['pair_index'] + 1} processed successfully (match: {match_value})")
+                pairs_processed += 1
+                logger.info(f"Pair {original_idx + 1} (batch pos {pair_num}) processed successfully (match: {match_value})")
             
         except Exception as e:
-            logger.error(f"Failed to process batch {batch_num} (pairs {batch_start + 1}-{batch_end}): {e}")
+            logger.error(f"Failed to process batch {batch_num}: {e}")
             
             # Create error results for all pairs in this batch
-            for pair_idx in range(batch_start, batch_end):
+            for i, pair_idx in enumerate(batch_indices):
                 pair_data = None
                 try:
                     pair_data = processor.get_pair_by_index(pair_idx)
                 except Exception:
-                    # Couldn't load this pair's data
                     pass
                 
                 if pair_data is None:
-                    # Minimal error result when pair data unavailable
                     result = create_result(
                         pair_data=None,
                         col1_name=col1_name,
@@ -385,10 +405,10 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
                         row_id=pair_idx + 1,
                         pair_index=pair_idx,
                         batch_num=batch_num,
+                        batch_position=i + 1,
                         pairs_in_batch=actual_pairs_in_batch
                     )
                 else:
-                    # Full error result with pair data
                     result = create_result(
                         pair_data=pair_data,
                         col1_name=col1_name,
@@ -397,17 +417,23 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
                         prompt=prompt if prompt else "Error generating prompt",
                         error=e,
                         batch_num=batch_num,
+                        batch_position=i + 1,
                         pairs_in_batch=actual_pairs_in_batch
                     )
                 
                 results.append(result)
+                pairs_processed += 1
         
         # Check for partial save
-        pairs_processed = batch_end - start_index
         if _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
             _save_partial_results(results, partial_save_path, pairs_processed, count, logger)
     
-    return pd.DataFrame(results)
+    # Sort results by original pair_index for consistent output
+    results_df = pd.DataFrame(results)
+    if 'pair_index' in results_df.columns:
+        results_df = results_df.sort_values('pair_index').reset_index(drop=True)
+    
+    return results_df
 
 
 def load_candidate_groups(pairs_df, target_side, logger):
