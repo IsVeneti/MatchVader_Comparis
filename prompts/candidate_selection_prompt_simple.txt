@@ -1,0 +1,8 @@
+Given a target entity and a list of candidates, which candidate (if any) is the same real-world entity?
+
+Target: [target_entity]
+
+Candidates:
+[candidates]
+
+Return the candidate number (1-based) that matches, or 0 if none match.

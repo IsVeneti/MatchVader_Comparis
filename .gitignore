@@ -3,7 +3,7 @@ llama-cpp-python/
 models/
 output*
 *.log
-results*
+result*
 .vscode/
 
 # Byte-compiled / optimized / DLL files
