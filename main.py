@@ -7,7 +7,7 @@ import yaml
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime
-from src.llm_connector.huggingface_llm import HuggingFaceLLM
+from src.llm_connector.huggingface_llm_outlines import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
 from src.data_processing.entity_matching_processor import EntityMatchingProcessor
@@ -830,7 +830,7 @@ def main():
             print(results_df.head(10))
         
         if 'match' in results_df.columns:
-            match_summary = results_df['match'].value_counts()
+            match_summary = results_df['match'].value_counts().to_dict()
             print(f"\nMatch Summary:")
             print(f"Matches (1): {match_summary.get(1, 0)}")
             print(f"No matches (0): {match_summary.get(0, 0)}")
