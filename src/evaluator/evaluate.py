@@ -10,7 +10,7 @@ def evaluate_results(merged_data: pd.DataFrame):
     
     acc = accuracy_score(y_true, y_pred)
     precision, recall, f1, _ = precision_recall_fscore_support(
-        y_true, y_pred, average='macro', zero_division=0
+        y_true, y_pred, average='binary', zero_division=0
     )
     conf_matrix = confusion_matrix(y_true, y_pred)
     
