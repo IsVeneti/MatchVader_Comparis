@@ -7,7 +7,7 @@ import yaml
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime
-from src.llm_connector.huggingface_llm_outlines import HuggingFaceLLM
+from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
 from src.data_processing.entity_matching_processor import EntityMatchingProcessor
