@@ -1,4 +1,4 @@
-Given a target entity and a list of candidates, which candidate (if any) is the same real-world entity?
+Given a target entity and a list of candidates, which candidate (if any) matches the target entity? Compare all attributes. Tolerate formatting differences; flag conflicts.
 
 Target: [target_entity]
 

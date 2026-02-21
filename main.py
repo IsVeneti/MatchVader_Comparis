@@ -7,7 +7,7 @@ import yaml
 import pandas as pd
 from dotenv import load_dotenv
 from datetime import datetime
-from src.llm_connector.huggingface_llm_outlines import HuggingFaceLLM
+from src.llm_connector.huggingface_llm import HuggingFaceLLM
 from src.utils.logging_utils import setup_logger
 from src.utils.schema_loader import load_schema_class
 from src.data_processing.entity_matching_processor import EntityMatchingProcessor
@@ -308,6 +308,15 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
         batch_end = min(batch_start + pairs_per_prompt, end_index)
         actual_pairs_in_batch = batch_end - batch_start
         batch_num += 1
+
+        # If incomplete batch, shift window back to fill the prompt
+        results_start = 0
+        if actual_pairs_in_batch < pairs_per_prompt and batch_start > start_index:
+            results_start = pairs_per_prompt - actual_pairs_in_batch
+            batch_start = batch_end - pairs_per_prompt
+            actual_pairs_in_batch = pairs_per_prompt
+            logger.info(f"Shifted batch {batch_num} back to start at pair {batch_start + 1} (recording from position {results_start + 1})")
+        
         
         logger.info(f"Processing batch {batch_num} with pairs {batch_start + 1}-{batch_end} ({actual_pairs_in_batch} pairs)")
         
@@ -343,6 +352,8 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             response_dict = response.model_dump() if hasattr(response, 'model_dump') else {}
             
             for i, pair_data in enumerate(batch_pairs):
+                if i < results_start:
+                    continue  # already processed in previous batch
                 pair_num = i + 1
                 match_field = f"pair_{pair_num}_match"
                 match_value = response_dict.get(match_field, None)
@@ -366,7 +377,9 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             logger.error(f"Failed to process batch {batch_num} (pairs {batch_start + 1}-{batch_end}): {e}")
             
             # Create error results for all pairs in this batch
-            for pair_idx in range(batch_start, batch_end):
+            for idx_in_batch, pair_idx in enumerate(range(batch_start, batch_end)):
+                if idx_in_batch < results_start:
+                    continue  # already processed in previous batch
                 pair_data = None
                 try:
                     pair_data = processor.get_pair_by_index(pair_idx)

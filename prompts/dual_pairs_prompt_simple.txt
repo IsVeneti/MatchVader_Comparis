@@ -1,4 +1,4 @@
-"""For each pair, are the two entities the same?
+"""For each pair, do the entities refer to the same real-world entity? Compare all attributes. Tolerate formatting differences; flag conflicting attributes.
 
 Pair 1: {{entity_1a}}, {{entity_1b}}
 Pair 2: {{entity_2a}}, {{entity_2b}}
