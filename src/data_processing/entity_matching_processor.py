@@ -30,17 +30,23 @@ class EntityMatchingProcessor:
         # Load datasets with pipe delimiter
         self.dataset1_df = load_csv_with_separator_detection(self.dataset1_path)
         self.dataset2_df = load_csv_with_separator_detection(self.dataset2_path)
-        
+
         # Load pairs dataset
         self.pairs_df = load_csv_with_separator_detection(self.pairs_path)
-        
+
         # Get column names dynamically from pairs file
         self.col1_name, self.col2_name = self.pairs_df.columns[0], self.pairs_df.columns[1]
-        
+
         # Keep original column names from the CSV files - don't hardcode them!
         # Strip whitespace from column names
         self.dataset1_df.columns = self.dataset1_df.columns.str.strip()
         self.dataset2_df.columns = self.dataset2_df.columns.str.strip()
+
+        # Index datasets by 'id' column for safe ID-based lookup (avoids iloc positional assumptions)
+        if 'id' in self.dataset1_df.columns:
+            self.dataset1_df = self.dataset1_df.set_index('id')
+        if 'id' in self.dataset2_df.columns:
+            self.dataset2_df = self.dataset2_df.set_index('id')
         
         print(f"Loaded {len(self.dataset1_df)} entities from {self.col1_name}")
         print(f"  Columns: {list(self.dataset1_df.columns)}")
@@ -92,9 +98,9 @@ class EntityMatchingProcessor:
         dataset1_idx = pair[self.col1_name]
         dataset2_idx = pair[self.col2_name]
         
-        # Get entities by their indices
-        entity1 = self.dataset1_df.iloc[dataset1_idx]
-        entity2 = self.dataset2_df.iloc[dataset2_idx]
+        # Get entities by their ID
+        entity1 = self.dataset1_df.loc[dataset1_idx]
+        entity2 = self.dataset2_df.loc[dataset2_idx]
         
         return {
             'pair_index': pair_index,

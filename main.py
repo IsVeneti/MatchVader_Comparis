@@ -509,14 +509,14 @@ def process_candidate_selection(llm, processor, prompt_template, schema_class, t
         prompt = None
         
         try:
-            # Get target entity data - using iloc since pairs file contains row indices
-            target_entity = target_df.iloc[target_id].to_dict()
+            # Get target entity data by ID
+            target_entity = target_df.loc[target_id].to_dict()
             target_entity_clean = {k: v for k, v in target_entity.items() if k.lower() != 'id'}
-            
+
             # Get candidate entities data
             candidates_data = []
             for cand_id in candidate_ids:
-                cand_entity = candidate_df.iloc[cand_id].to_dict()
+                cand_entity = candidate_df.loc[cand_id].to_dict()
                 cand_entity_clean = {k: v for k, v in cand_entity.items() if k.lower() != 'id'}
                 candidates_data.append({
                     'id': cand_id,
