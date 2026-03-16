@@ -1,7 +1,7 @@
 stuff/
 llama-cpp-python/
 models/
-output*
+*output*
 *.log
 result*
 .vscode/
