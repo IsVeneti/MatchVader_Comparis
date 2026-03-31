@@ -14,6 +14,10 @@ LAYOUTS = {
     'named': {
         'description': 'task/dataset_{number}/results.csv',
         'fields': ('task', 'dataset'),
+    },
+    'full': {
+        'description': 'model_run/dataset/prompt_type/results.csv',
+        'fields': ('model_run', 'dataset', 'prompt_type'),
     }
 }
 

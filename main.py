@@ -28,6 +28,10 @@ def parse_args():
     parser.add_argument("--partial-save", type=int, help="Save results every X entries (enables partial saving).")
     parser.add_argument("--start-index", type=int, default=0, help="Starting pair index for processing.")
     parser.add_argument("--count", type=int, help="Number of pairs to procesas (default: all from start-index).")
+    parser.add_argument("--repetitions", type=int, default=0,
+                        help="Number of times to repeat the instruction within the prompt (0 = no repetition, 1 = repeat once, etc.).")
+    parser.add_argument("--repetition-style", type=str, default="basic", choices=["basic", "verbose"],
+                        help="'basic' = space-separated copies, 'verbose' = bridging phrases between copies.")
     return parser.parse_args()
 
 
@@ -195,12 +199,33 @@ def _save_partial_results(results, partial_save_path, pairs_processed, total_cou
 
 def _should_partial_save(pairs_processed, partial_save_interval, partial_save_path):
     """Check if it's time to do a partial save."""
-    return (partial_save_interval and partial_save_path and 
+    return (partial_save_interval and partial_save_path and
             pairs_processed % partial_save_interval == 0)
 
 
-def process_entity_pairs_single(llm, processor, entities_list, prompt_template, schema_class, logger, 
-                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+def _apply_prompt_repetition(prompt, repetitions, style="basic"):
+    """
+    Repeat the prompt instruction within a single prompt string.
+    Based on Leviathan et al. (2024) - prompt repetition improves non-reasoning LLMs.
+
+    Args:
+        prompt: The fully-constructed prompt string.
+        repetitions: Number of extra copies to append (0 = no change).
+        style: 'basic' (space-separated) or 'verbose' (bridging phrases between copies).
+    """
+    if repetitions <= 0:
+        return prompt
+    bridges = ["Let me repeat that: ", "Let me repeat that one more time: "]
+    parts = [prompt]
+    for i in range(repetitions):
+        bridge = (bridges[i] if i < len(bridges) else "Let me repeat: ") if style == "verbose" else ""
+        parts.append(bridge + prompt)
+    return " ".join(parts)
+
+
+def process_entity_pairs_single(llm, processor, entities_list, prompt_template, schema_class, logger,
+                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None,
+                                repetitions=0, repetition_style="basic"):
     """Process entity pairs one at a time (original behavior)."""
     results = []
     
@@ -235,7 +260,8 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
             
             # Replace placeholders in prompt
             prompt = _replace_prompt_entities(prompt_template, entity_values)
-            
+            prompt = _apply_prompt_repetition(prompt, repetitions, repetition_style)
+
             logger.debug(f"Generated prompt: {prompt[:200]}{'...' if len(prompt) > 200 else ''}")
             
             response = llm.generate_structured(prompt, schema_class)
@@ -288,8 +314,9 @@ def process_entity_pairs_single(llm, processor, entities_list, prompt_template, 
     return pd.DataFrame(results)
 
 
-def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger, 
-                               start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger,
+                               start_index=0, count=None, partial_save_interval=None, partial_save_path=None,
+                               repetitions=0, repetition_style="basic"):
     """Process multiple entity pairs in a single prompt using static schema."""
     results = []
     
@@ -342,7 +369,8 @@ def process_entity_pairs_multi(llm, processor, entities_list, prompt_template, s
             
             # Replace placeholders in prompt
             prompt = _replace_prompt_entities(prompt_template, entity_values)
-            
+            prompt = _apply_prompt_repetition(prompt, repetitions, repetition_style)
+
             logger.debug(f"Generated prompt for batch: {prompt[:300]}{'...' if len(prompt) > 300 else ''}")
             
             # Get LLM response using the provided schema
@@ -463,7 +491,8 @@ def load_candidate_groups(pairs_df, target_side, logger):
 
 
 def process_candidate_selection(llm, processor, prompt_template, schema_class, task_config, logger,
-                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None):
+                                start_index=0, count=None, partial_save_interval=None, partial_save_path=None,
+                                repetitions=0, repetition_style="basic"):
     """
     Process candidate selection: for each target entity, find the matching candidate.
     """
@@ -509,14 +538,14 @@ def process_candidate_selection(llm, processor, prompt_template, schema_class, t
         prompt = None
         
         try:
-            # Get target entity data - using iloc since pairs file contains row indices
-            target_entity = target_df.iloc[target_id].to_dict()
+            # Get target entity data by ID
+            target_entity = target_df.loc[target_id].to_dict()
             target_entity_clean = {k: v for k, v in target_entity.items() if k.lower() != 'id'}
-            
+
             # Get candidate entities data
             candidates_data = []
             for cand_id in candidate_ids:
-                cand_entity = candidate_df.iloc[cand_id].to_dict()
+                cand_entity = candidate_df.loc[cand_id].to_dict()
                 cand_entity_clean = {k: v for k, v in cand_entity.items() if k.lower() != 'id'}
                 candidates_data.append({
                     'id': cand_id,
@@ -538,7 +567,8 @@ def process_candidate_selection(llm, processor, prompt_template, schema_class, t
                 "candidates": candidates_str
             }
             prompt = _replace_prompt_entities(prompt_template, entity_values)
-            
+            prompt = _apply_prompt_repetition(prompt, repetitions, repetition_style)
+
             logger.debug(f"Generated prompt: {prompt[:400]}{'...' if len(prompt) > 400 else ''}")
             
             # Get LLM response
@@ -748,7 +778,9 @@ def main():
             start_index=args.start_index,
             count=args.count,
             partial_save_interval=args.partial_save if args.save else None,
-            partial_save_path=partial_save_path
+            partial_save_path=partial_save_path,
+            repetitions=args.repetitions,
+            repetition_style=args.repetition_style
         )
     else:
         # Original pair processing logic
@@ -759,7 +791,9 @@ def main():
                 llm, processor, entities_list, prompt_template, schema_class, pairs_per_prompt, logger,
                 start_index=args.start_index, count=args.count,
                 partial_save_interval=args.partial_save if args.save else None,
-                partial_save_path=partial_save_path
+                partial_save_path=partial_save_path,
+                repetitions=args.repetitions,
+                repetition_style=args.repetition_style
             )
         else:
             logger.info("Single-pair mode: processing 1 pair per prompt")
@@ -767,7 +801,9 @@ def main():
                 llm, processor, entities_list, prompt_template, schema_class, logger,
                 start_index=args.start_index, count=args.count,
                 partial_save_interval=args.partial_save if args.save else None,
-                partial_save_path=partial_save_path
+                partial_save_path=partial_save_path,
+                repetitions=args.repetitions,
+                repetition_style=args.repetition_style
             )
     
     # Print summary
