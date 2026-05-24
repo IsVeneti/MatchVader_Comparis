@@ -5,8 +5,8 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support, con
 def evaluate_results(merged_data: pd.DataFrame):
     """Returns evaluation metrics as a dictionary"""
     df = merged_data
-    y_pred = df.iloc[:, -2]
-    y_true = df.iloc[:, -1]
+    y_pred = df["match_pairs"]
+    y_true = df["match_gt"]
     
     acc = accuracy_score(y_true, y_pred)
     precision, recall, f1, _ = precision_recall_fscore_support(
