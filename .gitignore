@@ -1,9 +1,9 @@
 stuff/
 llama-cpp-python/
 models/
-output*
+*output*
 *.log
-results*
+result*
 .vscode/
 
 # Byte-compiled / optimized / DLL files

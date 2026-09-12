@@ -1,0 +1,5 @@
+Do these two entities refer to the same real-world entity? Compare all attributes, not just names. Tolerate formatting differences; flag conflicting attributes.
+
+Entity 1: {{entity_1}}, Entity 2: {{entity_2}}.
+
+Please answer in json, {"match":1} for match or {"match":0} for no match.

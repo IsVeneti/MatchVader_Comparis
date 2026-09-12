@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -13,6 +14,10 @@ LAYOUTS = {
     'named': {
         'description': 'task/dataset_{number}/results.csv',
         'fields': ('task', 'dataset'),
+    },
+    'full': {
+        'description': 'model_run/dataset/prompt_type/results.csv',
+        'fields': ('model_run', 'dataset', 'prompt_type'),
     }
 }
 
@@ -52,6 +57,36 @@ def extract_metadata(results_path, base_path, layout='legacy'):
     return metadata
 
 
+def load_run_metadata(results_path, metadata_filename="metadata.json"):
+    """Load duration and token usage from a metadata.json file next to results.csv.
+
+    Returns a flat dict with 'duration_minutes' and all token_usage fields,
+    or an empty dict if the file is missing or malformed.
+    """
+    metadata_path = results_path.parent / metadata_filename
+    if not metadata_path.exists():
+        return {}
+
+    try:
+        with open(metadata_path) as f:
+            meta = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  ⚠ Could not read {metadata_path}: {e}")
+        return {}
+
+    run_meta = {}
+
+    duration = meta.get("run_info", {}).get("duration_minutes")
+    if duration is not None:
+        run_meta["duration_minutes"] = duration
+
+    token_usage = meta.get("token_usage", {})
+    for key, value in token_usage.items():
+        run_meta[f"token_{key}"] = value  # e.g. token_prompt_tokens, token_llm_calls
+
+    return run_meta
+
+
 def format_label(metadata, layout):
     """Build a short display label from metadata."""
     fields = LAYOUTS[layout]['fields']
@@ -76,6 +111,8 @@ def main():
                         help='Handle partial runs')
     parser.add_argument('--output', '-o', default='batch_evaluation_results.csv',
                         help='Output CSV file for aggregated results')
+    parser.add_argument('--metadata_file', default='metadata.json',
+                        help='Metadata filename to look for alongside each results file')
     parser.add_argument('--dry_run', action='store_true',
                         help='Print what would be evaluated without running')
 
@@ -104,10 +141,15 @@ def main():
             print(f"  Would evaluate: {results_path}")
             continue
 
+        # Load run metadata (duration + token usage)
+        run_meta = load_run_metadata(results_path, args.metadata_file)
+        if run_meta:
+            print(f"  ✓ Loaded run metadata ({len(run_meta)} fields)")
+        else:
+            print(f"  ⚠ No run metadata found")
+
         try:
-            # Resolve the dataset name for evaluate_file
-            # For 'named' layout, use the full dataset folder name (e.g. dataset_01)
-            dataset_key = metadata.get('dataset', metadata.get('dataset', 'unknown'))
+            dataset_key = metadata.get('dataset', 'unknown')
 
             metrics = evaluate_file(
                 dataset=dataset_key,
@@ -120,6 +162,7 @@ def main():
 
             result_record = {
                 **metadata,
+                **run_meta,
                 **metrics,
                 'eval_status': 'success'
             }
@@ -128,6 +171,7 @@ def main():
             print(f"  ✗ Evaluation failed: {str(e)}")
             result_record = {
                 **metadata,
+                **run_meta,
                 'eval_status': 'failed',
                 'error': str(e)
             }

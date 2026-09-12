@@ -1,7 +1,7 @@
 Pairs:
   schema: "src.schemas.pairs_schema.PairsSchema"
   entities: ["entity_1", "entity_2"]
-  prompt: "prompts/pairs_prompt.txt"
+  prompt: "prompts/pairs_prompt_simple.txt"
   max_tokens: 100
   temperature: 0.2
   pairs_per_prompt: 1
@@ -9,7 +9,7 @@ Pairs:
 DualPairs:
   schema: "src.schemas.dual_pairs_schema.DualPairsSchema"
   entities: ["entity_1a", "entity_1a, entity_2a", "entity_2b"]
-  prompt: "prompts/dual_pairs_prompt.txt"
+  prompt: "prompts/dual_pairs_prompt_simple.txt"
   max_tokens: 100
   temperature: 0.2
   pairs_per_prompt: 2
@@ -22,7 +22,7 @@ DummyTask:
 CandidateSelection_D2Target:
   schema: "src.schemas.candidate_selection_schema.CandidateSelectionSchema"
   entities: ["target_entity", "candidates"]
-  prompt: "prompts/candidate_selection_prompt.txt"
+  prompt: "prompts/candidate_selection_prompt_simple.txt"
   max_tokens: 100
   temperature: 0.2
   pairs_per_prompt: 1
@@ -32,7 +32,7 @@ CandidateSelection_D2Target:
 CandidateSelection_D1Target:
   schema: "src.schemas.candidate_selection_schema.CandidateSelectionSchema"
   entities: ["target_entity", "candidates"]
-  prompt: "prompts/candidate_selection_prompt.txt"
+  prompt: "prompts/candidate_selection_prompt_simple.txt"
   max_tokens: 100
   temperature: 0.2
   pairs_per_prompt: 1
