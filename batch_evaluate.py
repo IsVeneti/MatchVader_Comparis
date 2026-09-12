@@ -15,6 +15,10 @@ LAYOUTS = {
         'description': 'task/dataset_{number}/results.csv',
         'fields': ('task', 'dataset'),
     },
+    'model_task': {
+        'description': 'model/task/dataset_{number}/results.csv',
+        'fields': ('model', 'task', 'dataset'),
+    },
     'full': {
         'description': 'model_run/dataset/prompt_type/results.csv',
         'fields': ('model_run', 'dataset', 'prompt_type'),
@@ -45,8 +49,8 @@ def extract_metadata(results_path, base_path, layout='legacy'):
     }
     metadata['full_path'] = str(results_path)
 
-    # For the named layout, also parse out the number suffix if present
-    if layout == 'named' and 'dataset' in metadata and metadata['dataset'] != 'unknown':
+    # For layouts with a 'dataset' field, parse out the number suffix if present
+    if 'dataset' in metadata and metadata['dataset'] != 'unknown':
         ds = metadata['dataset']
         if '_' in ds:
             prefix, _, num = ds.rpartition('_')
@@ -144,9 +148,9 @@ def main():
         # Load run metadata (duration + token usage)
         run_meta = load_run_metadata(results_path, args.metadata_file)
         if run_meta:
-            print(f"  ✓ Loaded run metadata ({len(run_meta)} fields)")
+            print(f"  OK Loaded run metadata ({len(run_meta)} fields)")
         else:
-            print(f"  ⚠ No run metadata found")
+            print(f"  WARN No run metadata found")
 
         try:
             dataset_key = metadata.get('dataset', 'unknown')
@@ -158,7 +162,7 @@ def main():
                 partial=args.partial
             )
 
-            print("  ✓ Evaluation completed")
+            print("  OK Evaluation completed")
 
             result_record = {
                 **metadata,
@@ -168,7 +172,7 @@ def main():
             }
 
         except Exception as e:
-            print(f"  ✗ Evaluation failed: {str(e)}")
+            print(f"  FAIL Evaluation failed: {str(e)}")
             result_record = {
                 **metadata,
                 **run_meta,
