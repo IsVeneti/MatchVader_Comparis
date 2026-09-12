@@ -3,8 +3,11 @@ llama-cpp-python/
 models/
 *output*
 *.log
-result*
+result
+results
 .vscode/
+*yoda*
+*qwen*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
