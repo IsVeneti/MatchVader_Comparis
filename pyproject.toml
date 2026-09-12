@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10.8",
+    "openpyxl>=3.1.5",
     "outlines>=1.2.10",
     "pandas>=2.3.1",
     "pydantic>=2.12.5",
@@ -13,5 +14,11 @@ dependencies = [
     "pyyaml>=6.0.2",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
+    "statsmodels>=0.14.6",
     "transformers>=5.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
 ]
